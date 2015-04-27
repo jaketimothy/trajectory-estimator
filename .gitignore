@@ -1,3 +1,8 @@
+# Data
+EGM2008_to2190_TideFree
+Zeta-to-N_to2160_egm2008
+
+# Scala specific
 *.class
 *.log
 
@@ -19,6 +24,7 @@ project/plugins/project/
 # TeX specific
 *.aux
 *.synctex.gz
+*.bbl
 *.pdf
 
 # =========================

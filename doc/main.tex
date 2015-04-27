@@ -1,6 +1,7 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{mathtools}
+\usepackage{amsrefs}
 
 \title{Trajectory Estimator}
 \author{Jake Timothy}
@@ -20,7 +21,7 @@
 \subsection{State Estimator}
 
 \section{Models}
-\subsection{Gravity Model: World Geodetic System 1984}
+\subsection{Gravity Model: World Geodetic System 1984~\cite{wgs84,egm2008}}
 \subsubsection{Spherical Harmonic Gravity Model}
 \subsubsection{Spherical Harmonic Functions}
 \subsubsection{Associated Legendre Polynomials}
@@ -80,7 +81,16 @@ m < 0
 \end{array}
 \end{equation}
 
-\subsection{Atmosphere Model: U.S. Standard Atmosphere 1976}
+\subsection{Atmosphere Model: U.S. Standard Atmosphere 1976~\cite{noaa76}}
 
+
+\newpage
+\begin{bibdiv}
+\begin{biblist}
+
+\bibselect{references}
+
+\end{biblist}
+\end{bibdiv}
 
 \end{document}

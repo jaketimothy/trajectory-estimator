@@ -1,0 +1,41 @@
+\documentclass{article}
+
+\usepackage{amsrefs}
+
+\begin{document}
+
+\begin{bibdiv}
+\begin{biblist}
+
+\bib{egm2008}{article}{
+title={The development and evaluation of the Earth Gravitational Model 2008 (EGM2008)},
+author={Pavlis, Nikolaos K.},
+author={Holmes, Simon A.},
+author={Kenyon, Steve C.},
+author={Factor, John K.},
+journal={Journal of Geophysical Research: Solid Earth},
+volume = {117},
+number = {B4},
+issn={2156-2202},
+date={2012-04-19}
+}
+
+\bib{wgs84}{report}{
+title={Department of Defense World Geodetic System 1984},
+subtitle={Its definition and relationships with local geodetic systems},
+organization={National Imagery and Mapping Agency},
+edition={3},
+number={8350.2},
+date={1997-07-04}
+}
+
+\bib{noaa76}{report}{
+title={U.S. Standard Atmosphere, 1976},
+organization={National Oceanic and Atmospheric Administration},
+date={1976-10}
+}
+
+\end{biblist}
+\end{bibdiv}
+
+\end{document}
