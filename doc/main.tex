@@ -1,0 +1,86 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{mathtools}
+
+\title{Trajectory Estimator}
+\author{Jake Timothy}
+\date{April 2015}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\section{Batch Processor}
+\subsection{Data}
+\subsubsection{On-board Data}
+\subsubsection{Off-board Data}
+
+\subsection{State Estimator}
+
+\section{Models}
+\subsection{Gravity Model: World Geodetic System 1984}
+\subsubsection{Spherical Harmonic Gravity Model}
+\subsubsection{Spherical Harmonic Functions}
+\subsubsection{Associated Legendre Polynomials}
+\begin{equation}
+T{\left(r,\theta,\lambda\right)} = \frac{G M}{r} \sum_{n=2}^\infty \left(\frac{a}{r}\right)^n \sum_{m=-n}^n \overline{C}_{n m}^s \overline{Y}_{n m}{\left(\theta,\lambda\right)}
+\end{equation}
+
+\begin{equation}
+\overline{Y}_{n m}{\left(\theta,\lambda\right)} = \overline{P}_{n |m|}{\left(cos \theta\right)} \left\{\begin{array}{l}
+cos m \lambda \\
+sin |m| \lambda
+\end{array}\right\} \begin{array}{l}
+m \geq 0 \\
+m < 0
+\end{array}
+\end{equation}
+
+\begin{equation}
+\overline{P}_{n m}{\left(x\right)} = \left(-1\right)^m \sqrt{\frac{\left(n + \frac{1}{2}\right) \left(n - m\right)!}{\left(n + m\right)!}} P_{n m}{\left(x\right)}
+\end{equation}
+
+\begin{equation}
+P_{n m}{\left(x\right)} = \left\{\begin{array}{l}
+\left(-1\right)^m \left(1 - x^2\right)^{m / 2} \frac{d^m}{d x^m} P_n{\left(x\right)} \\
+\left(-1\right)^m \frac{\left(n - |m|\right)!}{\left(n + |m|\right)!} P_{n |m|}{\left(x\right)}
+\end{array}\right\} \begin{array}{l}
+m \geq 0 \\
+m < 0
+\end{array}
+\end{equation}
+
+\begin{equation}
+P_n{\left(x\right)} = \frac{1}{2^n n!} \frac{d^n}{d x^n} \left(x^2 - 1\right)^n
+\end{equation}
+
+\begin{equation}
+\overline{P}_{n m}{\left(x\right)} = \left\{\begin{array}{l}
+\sqrt{\frac{\left(n + \frac{1}{2}\right) \left(n - m\right)!}{\left(n + m\right)!}} \left(1 - x^2\right)^{m / 2} \frac{d^m}{d x^m} P_n{\left(x\right)} \\
+\left(-1\right)^m P_{n |m|}{\left(x\right)}
+\end{array}\right\} \begin{array}{l}
+m \geq 0 \\
+m < 0
+\end{array}
+\end{equation}
+
+\begin{equation}
+P_{n m}{\left(x\right)} = \left(-1\right)^m \sqrt{\frac{\left(n + m\right)!}{\left(n + \frac{1}{2}\right) \left(n - m\right)!}} \overline{P}_{n m}{\left(x\right)}
+\end{equation}
+
+\begin{equation}
+P_{n m}{\left(x\right)} = \left\{\begin{array}{l}
+\left(-1\right)^m \sqrt{\frac{\left(n + m\right)!}{\left(n + \frac{1}{2}\right) \left(n - m\right)!}} \overline{P}_{n m}{\left(x\right)} \\
+\sqrt{\frac{\left(n - |m|\right)!}{\left(n + \frac{1}{2}\right) \left(n + |m|\right)!}} \overline{P}_{n |m|}{\left(x\right)}
+\end{array}\right\} \begin{array}{l}
+m \geq 0 \\
+m < 0
+\end{array}
+\end{equation}
+
+\subsection{Atmosphere Model: U.S. Standard Atmosphere 1976}
+
+
+\end{document}
