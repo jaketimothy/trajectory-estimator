@@ -1,5 +1,6 @@
 // WgsGravityModel.scala
 package estimator
+
 import estimator.SphericalHarmonicFunctions
 import math.{pow, abs, sqrt, cos, sin, atan, atan2}
 

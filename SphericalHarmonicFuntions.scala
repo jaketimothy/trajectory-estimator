@@ -1,5 +1,6 @@
 // SphericalHarmonicFunctions.scala
 package estimator
+
 import estimator.AssociatedLegendrePolynomials
 import math.{abs, cos, sin}
 
@@ -10,17 +11,13 @@ class SphericalHarmonicFunctions(degree:Int) {
 
 	require(degree >= 0, "degree must be non-negative.")
 
-	private val legendrePolynomials = AssociatedLegendrePolynomials(degree)
+	val legendrePolynomials = AssociatedLegendrePolynomials(degree)
 
 	def normalizedValue(order:Int, theta:Double, lambda:Double) = {
 		order match {
 			case m if (abs(m) <= degree) => {
-				val legendreValue = legendrePolynomials.normalizedValue(abs(m), cos(theta))
-				if (m >= 0) {
-					legendreValue * cos(m * lambda)
-				} else {
-					legendreValue * sin(-m * lambda)
-				}
+				(if(m >= 0) cos(m * lambda) else sin(-m * lambda)) *
+					legendrePolynomials.normalizedValue(abs(m), cos(theta))
 			}
 		} 
 	}

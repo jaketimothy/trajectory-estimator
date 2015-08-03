@@ -1,5 +1,6 @@
 // AssociatedLegendrePolynomials.scala
 package estimator
+
 import math.{pow, abs, sqrt, BigDecimal}
 import org.apache.commons.math3.analysis.polynomials.{PolynomialFunction, PolynomialsUtils}
 
@@ -17,44 +18,22 @@ class AssociatedLegendrePolynomials(degree:Int) {
 	
 	require(degree >= 0, "degree must be non-negative.")
 
-	private lazy val factorial = {
-		(1 to 2 * degree).scanLeft(BigDecimal.apply(1.0))((b, n) => b * m)
-	}
-
 	private val normalizedPolynomials = {
 		val originalFunction = PolynomialsUtils.createLegendrePolynomial(degree).multiply(
-			new PolynomialFunction(Array(sqrt(degree + 0.5)))
+			new PolynomialFunction(Array(
+				sqrt(degree + 0.5)))
 			)
 		(1 to degree).scanLeft(originalFunction)((b, m) => {
-				b.polynomialDerivative.multiply(
-					new PolynomialFunction(Array(1.0 / ((degree + m) * (degree - m + 1.0))))
-					)
-				})
-	}
-
-	def value(order:Int, x:Double) = {
-		order match {
-			case m if (abs(m) <= degree) => {
-				val factorialRatio = sqrt((factorial(degree + m) / factorial(degree - m))).toDouble
-				val value = normalizedValue(m, x) / sqrt(degree + 0.5)
-				if (m > 0) {
-					value * factorialRatio * pow(-1.0, m % 2)
-				} else {
-					value / factorialRatio
-				}
-			}
-		}
+			b.polynomialDerivative.multiply(new PolynomialFunction(Array(
+				1.0 / ((degree + m) * (degree - m + 1.0)))))
+			})
 	}
 
 	def normalizedValue(order:Int, x:Double) = {
 		order match {
 			case m if (abs(m) <= degree) => {
-				val value = pow(1.0 - x * x, abs(m) / 2.0) * normalizedPolynomials(abs(m)).value(x)
-				if (m < 0 && m % 2 == 1) {
-					-value
-				} else {
-					value
-				}
+				pow(1.0 - x * x, abs(m) / 2.0) * normalizedPolynomials(abs(m)).value(x) * 
+					if(m < 0 && m % 2 == 1) -1.0 else 1.0
 			}
 		}
 	}
