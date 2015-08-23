@@ -1,10 +1,10 @@
 // AssociatedLegendrePolynomials.scala
-package estimator
+package estimator.functions
 
-import math.{pow, abs, sqrt, BigDecimal}
+import math._
 import org.apache.commons.math3.analysis.polynomials.{PolynomialFunction, PolynomialsUtils}
 
-class AssociatedLegendrePolynomials(degree:Int) {
+class AssociatedLegendrePolynomials(val degree:Int) {
 	// Associated legendre polynomials are defined by
 	//     P(n, m, x) = (-1)^m * (1 - x^2)^(m/2) * d^m/dx^m(P(n, x)),  m >= 0       (1)
 	//     P(n, m, x) = (-1)^m * (n + m)!/(n - m)! * P(n, abs(m), x),  m < 0        (2)
