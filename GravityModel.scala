@@ -48,57 +48,57 @@ class EllipsoidalGravityModel(val referenceEllipsoid:ReferenceEllipsoid) extends
 
 		ellipsoidalToCartesian.applyTo(gammaEllipsoidal)
 	}
+}
 
-	class SphericalHarmonicGravityModel(
-		val referenceEllipsoid:ReferenceEllipsoid,
-		val harmonicCoefficients:Vector[Vector[Double]]
-		) extends GravityModel {
-		val sphericalHarmonicFunctions = SphericalHarmonicFunctions(harmonicCoefficients.length)
+class SphericalHarmonicGravityModel(
+	val referenceEllipsoid:ReferenceEllipsoid,
+	val harmonicCoefficients:Vector[Vector[Double]]
+	) extends GravityModel {
+	val sphericalHarmonicFunctions = SphericalHarmonicFunctions(harmonicCoefficients.length)
 
-		def degree = sphericalHarmonicFunctions.degree
+	def degree = sphericalHarmonicFunctions.degree
 
-		def gravitationalAcceleration(position:Vector3D) = {
-			// implemented from EGM2008 (Apr 2012), section 2.2
+	def gravitationalAcceleration(position:Vector3D) = {
+		// implemented from EGM2008 (Apr 2012), section 2.2
 
-			val latitude = acos(position.getZ / position.getNorm) // spherical latitude
-			val longitude = atan(position.getY / position.getX)
+		val latitude = acos(position.getZ / position.getNorm) // spherical latitude
+		val longitude = atan(position.getY / position.getX)
 
-			position.scalarMultiply(-referenceEllipsoid.gravitationalParameter / position.getNormSq * 
-				(2 to degree).foldLeft(0.0)((sum, n) => 
-					sum + pow(Ellipsoid.semimajorAxis / radius, n) * (-n to n).foldLeft(0.0)((innersum, m) => 
-						innersum + harmonicCoefficients(n)(abs(m)) * sphericalHarmonics.normalizedValue(m, latitude, longitude))))
-		}
+		position.scalarMultiply(-referenceEllipsoid.gravitationalParameter / position.getNormSq * 
+			(2 to degree).foldLeft(0.0)((sum, n) => 
+				sum + pow(Ellipsoid.semimajorAxis / radius, n) * (-n to n).foldLeft(0.0)((innersum, m) => 
+					innersum + harmonicCoefficients(n)(abs(m)) * sphericalHarmonics.normalizedValue(m, latitude, longitude))))
 	}
+}
 
-	object SphericalHarmonicGravityModel {
-		def parseWgs84CoefficientsFile(file:String, degree:Int) = {
-			val egmfile = io.Source.fromFile(file)
-			val C = Array.fill(degree, degree + 1)(0.0)
-			try {
-				var o = 0
-				egmfile.getLines.toStream.takeWhile(_ => o < degree).foreach(line => {
-					val lineparts = line.trim.split("""\s+""")
-					val d = lineparts(0).toInt
-					o = lineparts(1).toInt
-					val cvalues = lineparts.slice(2,6).map(_.toDouble)
-					C(d,o) = cvalues(0)
-					})
-			} finally {
-				egmfile.close
-			}
-			C
-		}
-	}
-
-	class PointMassGravityModel(
-		val gravitationalParameter:Double,
-		val normalizedPointMasses:Vector[(Vector3D,Double)] // (location, value) pairs
-		) extends GravityModel {
-		def gravitationalAcceleration(position:Vector3D) = {
-			gravitationalParameter * normalizedPointMasses.foldLeft(Vector3D(0.0, 0.0, 0.0))((g, pointMass) => {
-				val r = pointMass._1.subtract(position)
-				g.subtract(pointMass._2 / r.getNormSq / r.getNorm, r)
+object SphericalHarmonicGravityModel {
+	def parseWgs84CoefficientsFile(file:String, degree:Int) = {
+		val egmfile = io.Source.fromFile(file)
+		val coefficients = Vector.fill(degree, degree + 1)(0.0)
+		try {
+			var o = 0
+			egmfile.getLines.toStream.takeWhile(_ => o < degree).foreach(line => {
+				val lineparts = line.trim.split("""\s+""")
+				val d = lineparts(0).toInt
+				o = lineparts(1).toInt
+				val cvalues = lineparts.slice(2,6).map(_.toDouble)
+				coefficients(d,o) = cvalues(0)
 				})
+		} finally {
+			egmfile.close
 		}
+		coefficients
+	}
+}
+
+class PointMassGravityModel(
+	val gravitationalParameter:Double,
+	val normalizedPointMasses:Vector[(Vector3D,Double)] // (location, value) pairs
+	) extends GravityModel {
+	def gravitationalAcceleration(position:Vector3D) = {
+		gravitationalParameter * normalizedPointMasses.foldLeft(Vector3D(0.0, 0.0, 0.0))((g, pointMass) => {
+			val r = pointMass._1.subtract(position)
+			g.subtract(pointMass._2 / r.getNormSq / r.getNorm, r)
+			})
 	}
 }
