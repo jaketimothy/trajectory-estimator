@@ -21,8 +21,28 @@
 \subsection{State Estimator}
 
 \section{Models}
-\subsection{Gravity Model: World Geodetic System 1984~\cite{wgs84,egm2008}}
+\subsection{Gravity Model: World Geodetic System 1984~\cites{wgs84,egm2008}}
 \subsubsection{Spherical Harmonic Gravity Model}
+\begin{equation}
+V\left(r,\theta,\lambda\right) = \frac{G M}{r} \left(1 + \sum_{n=2}^{\infty} \left(\frac{a}{r}\right)^n \sum_{m=-n}^n C_n^m Y_n^m\left(\theta,\lambda\right)\right)
+\end{equation}
+
+\begin{equation}
+\begin{split}
+r &= \sqrt{x^2+y^2+z^2}, \\
+\theta &= \frac{z}{r}, \\
+\lambda &= \tan^{-1}\left(\frac{y}{x}\right)
+\end{split}
+\end{equation}
+
+\begin{equation}
+V\left(x,y,z\right) = \frac{G M}{\sqrt{x^2+y^2+z^2}} \left(1 + \sum_{n=2}^{\infty} \left(\frac{a}{\sqrt{x^2+y^2+z^2}}\right)^n \sum_{m=-n}^n C_n^m Y_n^m\left(\frac{z}{\sqrt{x^2+y^2+z^2}},\tan^{-1}\left(\frac{y}{x}\right)\right)\right)
+\end{equation}
+
+\begin{equation}
+\vec{g} = -\nabla_{\{x,y,z\}}V
+\end{equation}
+
 \subsubsection{Spherical Harmonic Functions}
 \subsubsection{Associated Legendre Polynomials}
 \begin{equation}
@@ -88,7 +108,33 @@ m < 0
 \begin{bibdiv}
 \begin{biblist}
 
-\bibselect{references}
+\bib{egm2008}{article}{
+	title={The development and evaluation of the Earth Gravitational Model 2008 (EGM2008)},
+	author={Pavlis, Nikolaos K.},
+	author={Holmes, Simon A.},
+	author={Kenyon, Steve C.},
+	author={Factor, John K.},
+	journal={Journal of Geophysical Research: Solid Earth},
+	volume = {117},
+	number = {B4},
+	issn={2156-2202},
+	date={2012-04-19}
+}
+
+\bib{wgs84}{report}{
+	title={Department of Defense World Geodetic System 1984},
+	subtitle={Its definition and relationships with local geodetic systems},
+	organization={National Imagery and Mapping Agency},
+	edition={3},
+	number={8350.2},
+	date={1997-07-04}
+}
+
+\bib{noaa76}{report}{
+	title={U.S. Standard Atmosphere, 1976},
+	organization={National Oceanic and Atmospheric Administration},
+	date={1976-10}
+}
 
 \end{biblist}
 \end{bibdiv}
