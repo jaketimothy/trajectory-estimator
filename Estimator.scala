@@ -5,7 +5,7 @@ import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.sql.SQLContext
 import estimator.planetmodel._
-import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
+import breeze.linalg._
 
 object Estimator extends App {
 	// input: observation stations, observations
@@ -26,12 +26,12 @@ object Estimator extends App {
 	val earth = Earth(Earth.EarthModelType.WGS84, earthHarmonicCoefficients)
 
 	// define ivp ode
-	def motionEquations(t:Double, y:(Vector3D,Vector3D)) = {
+	def motionEquations(t: Double, y: DenseVector[Double]) = {
 		// dy = f(t, y), y = [y, ydot]
-		(y._2, earth.gravityModel.gravitationalAcceleration(y._1)
+		y(3 to 5) ++ earth.gravityModel.gravitationalAcceleration(y(0 to 2))
 	}
 
-	def observationEquations(x:Vector[Double]) = {
+	def observationEquations(x: DenseVector[Double]) = {
 
 	}
 

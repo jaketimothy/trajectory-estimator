@@ -2,13 +2,15 @@
 package estimator.planetmodel
 
 class Earth(
-	val earthType:EarthModelType,
-	harmonicCoefficients:Vector[Vector[Double]] = Vector.empty
+	val earthType: EarthModelType,
+	harmonicCoefficients: Vector[Vector[(Double, Double)]] = Vector.empty
 	) extends Planet(harmonicCoefficients) {
-	val referenceEllipsoid = earthEllipsoids(earthType)
+
+	override val referenceEllipsoid = earthEllipsoids(earthType)
 }
 
 object Earth {
+
 	object EarthModelType extends Enumeration {
 		type EarthModelType = Value
 		val WGS84 = Value

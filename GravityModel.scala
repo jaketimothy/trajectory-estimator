@@ -13,13 +13,13 @@ trait GravityModel {
 
 class PointGravityModel(val gravitationalParameter: Double) extends GravityModel {
 
-	def gravitationalAcceleration(position: DenseVector[Double]) = 
-		-gravitationalParameter / pow(norm(position), 3) * position
+	override def gravitationalAcceleration(position: DenseVector[Double]) = 
+		-gravitationalParameter / pow(position.norm, 3) * position
 }
 
 class EllipsoidalGravityModel(val referenceEllipsoid: ReferenceEllipsoid) extends GravityModel {
 	
-	def gravitationalAcceleration(position: DenseVector[Double]) = {
+	override def gravitationalAcceleration(position: DenseVector[Double]) = {
 		// implemented from WGS84 (Jan 2000), chapter 4
 
 		val c = referenceEllipsoid.linearEccentricity
@@ -65,7 +65,7 @@ class SphericalHarmonicGravityModel(
 		case(n, m) => sqrt((n + m + 1.0) * (n - m) * (if (m == 0) 0.5 else 1.0))
 	}
 
-	def gravitationalAcceleration(position: DenseVector[Double]) = {
+	override def gravitationalAcceleration(position: DenseVector[Double]) = {
 		// implemented from the Cartesian (Gottlieb) model [Jones, section 2.1.4]
 		
 		val r = position.norm
@@ -124,7 +124,7 @@ class PointMassGravityModel(
 	val normalizedPointMasses: Vector[(DenseVector[Double], Double)] // (location, value) pairs
 	) extends GravityModel {
 
-	def gravitationalAcceleration(position: DenseVector[Double]) = {
+	override def gravitationalAcceleration(position: DenseVector[Double]) = {
 		gravitationalParameter * normalizedPointMasses.foldLeft(new DenseVector(0.0, 0.0, 0.0))((g, pointMass) => {
 			val r = pointMass._1 - position
 			g - pointMass._2 / r.norm / r.norm * r / r.norm
