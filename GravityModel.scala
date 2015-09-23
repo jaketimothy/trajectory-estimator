@@ -2,20 +2,24 @@
 package estimator.planetmodel
 
 import math._
-import org.apache.commons.math3.geometry.euclidean.threed._
+import breeze.linalg._
+import estimator.functions.DerivedLegendreFunctions
 
 trait GravityModel {
 	// coordinates are ECEF
-	def gravitationalAcceleration(position:Vector3D):Vector3D
+
+	def gravitationalAcceleration(position: DenseVector[Double]): DenseVector[Double]
 }
 
-class PointGravityModel(val gravitationalParameter:Double) extends GravityModel {
-	def gravitationalAcceleration(position:Vector3D) = 
-		position.scalarMultiply(-gravitationalParameter / position.getNorm / position.getNormSq)
+class PointGravityModel(val gravitationalParameter: Double) extends GravityModel {
+
+	def gravitationalAcceleration(position: DenseVector[Double]) = 
+		-gravitationalParameter / pow(norm(position), 3) * position
 }
 
-class EllipsoidalGravityModel(val referenceEllipsoid:ReferenceEllipsoid) extends GravityModel {
-	def gravitationalAcceleration(position:Vector3D) = {
+class EllipsoidalGravityModel(val referenceEllipsoid: ReferenceEllipsoid) extends GravityModel {
+	
+	def gravitationalAcceleration(position: DenseVector[Double]) = {
 		// implemented from WGS84 (Jan 2000), chapter 4
 
 		val c = referenceEllipsoid.linearEccentricity
@@ -23,10 +27,10 @@ class EllipsoidalGravityModel(val referenceEllipsoid:ReferenceEllipsoid) extends
 		val omega = referenceEllipsoid.angularVelocity
 		val a = referenceEllipsoid.semimajorAxis
 
-		val p = sqrt(position.getX * position.getX + position.getY * position.getY)
-		val u = sqrt(0.5 * (position.getNorm - c * c) *
-			(1.0 + sqrt(1.0 + 4.0 * c * c * position.getZ * position.getZ / pow(position.getNorm - c * c, 2))))
-		val beta = atan(position.getZ / u * sqrt(u * u + c * c) / p)
+		val p = sqrt(position(0) * position(0) + position(1) * position(1))
+		val u = sqrt(0.5 * (position.norm * position.norm - c * c) *
+			(1.0 + sqrt(1.0 + 4.0 * c * c * position(2) * position(2) / pow(position.norm * position.norm - c * c, 2))))
+		val beta = atan(position(2) / u * sqrt(u * u + c * c) / p)
 		val w = sqrt((u * u + pow(c * sin(beta), 2)) / (u * u + c * c))
 		val q = 0.5 * ((1.0 + 3.0 * u * u / (c * c)) * atan(c / u) - 3.0 * u / c)
 		val q0 = 0.5 * ((1.0 + 3.0 * b * b / (c * c)) * atan(c / b) - 3.0 * b / c)
@@ -37,68 +41,93 @@ class EllipsoidalGravityModel(val referenceEllipsoid:ReferenceEllipsoid) extends
 			omega * omega * u * pow(cos(beta), 2)) / w
 		val gammaBeta = (a * a / sqrt(u * u + c * c) * q / q0 - sqrt(u * u + c * c)) *
 			omega * omega * sin(beta) * cos(beta) / w
-		val gammaEllipsoidal = Vector3D(gammaU, gammaBeta, 0.0)
+		val gammaEllipsoidal = new DenseVector(gammaU, gammaBeta, 0.0)
 
 		val r = u / (w * sqrt(u * u + c * c))
-		val ellipsoidalToCartesian = Rotation(Array(
-			Array(r * cos(beta) * position.getX / p, -sin(beta) * position.getX / p / w, -position.getY / p),
-			Array(r * cos(beta) * position.getY / p, -sin(beta) * position.getY / p / w, position.getX / p),
-			Array(sin(beta) / w, r * coa(beta), 0.0)),
-			1e-10)
+		val ellipsoidalToCartesian = new DenseMatrix(3, 3, Array(
+			r * cos(beta) * position(0) / p, r * cos(beta) * position(1) / p, sin(beta) / w,
+			-sin(beta) * position(0) / p / w, -sin(beta) * position(1) / p / w, r * cos(beta),
+			-position(1) / p, position(0) / p, 0.0))
 
-		ellipsoidalToCartesian.applyTo(gammaEllipsoidal)
+		ellipsoidalToCartesian * gammaEllipsoidal
 	}
 }
 
 class SphericalHarmonicGravityModel(
-	val referenceEllipsoid:ReferenceEllipsoid,
-	val harmonicCoefficients:Vector[Vector[Double]]
+	val referenceEllipsoid: ReferenceEllipsoid,
+	val harmonicCoefficients: Vector[Vector[(Double, Double)]]
 	) extends GravityModel {
-	val sphericalHarmonicFunctions = SphericalHarmonicFunctions(harmonicCoefficients.length)
 
-	def degree = sphericalHarmonicFunctions.degree
+	def degree = harmonicCoefficients.length - 1
 
-	def gravitationalAcceleration(position:Vector3D) = {
-		// implemented from EGM2008 (Apr 2012), section 2.2
+	// Jones, equation 2.15
+	private val getPi = Vector.tabulate(degree + 1, degree + 1){
+		case(n, m) => sqrt((n + m + 1.0) * (n - m) * (if (m == 0) 0.5 else 1.0))
+	}
 
-		val latitude = acos(position.getZ / position.getNorm) // spherical latitude
-		val longitude = atan(position.getY / position.getX)
+	def gravitationalAcceleration(position: DenseVector[Double]) = {
+		// implemented from the Cartesian (Gottlieb) model [Jones, section 2.1.4]
+		
+		val r = position.norm
+		val pq1 = (position(0) / r, position(1) / r)
+		val pq = (1.0, 0.0) +: (1 to degree).scanLeft(pq1)((pqPrev, i) => 
+			(pq1._1 * pqPrev._1 - pq1._2 * pqPrev._1, pq1._2 * pqPrev._2 + pq1._1 * pqPrev._2))
+		
+		val d = harmonicCoefficients.map(_.zip(pq).map{case(csnm, pqm) => csnm._1 * pqm._1 + csnm._2 * pqm._2})
+		val e = harmonicCoefficients.map(0.0 +: _.tail.zip(pq.dropRight(1)).map{case(csnm, pqm) => csnm._1 * pqm._1 + csnm._2 * pqm._2})
+		val f = harmonicCoefficients.map(csn => csn.zip(pq).map{case(csnm, pqm) => csnm._2 * pqm._1 - csnm._1 * pqm._2})
 
-		position.scalarMultiply(-referenceEllipsoid.gravitationalParameter / position.getNormSq * 
-			(2 to degree).foldLeft(0.0)((sum, n) => 
-				sum + pow(Ellipsoid.semimajorAxis / radius, n) * (-n to n).foldLeft(0.0)((innersum, m) => 
-					innersum + harmonicCoefficients(n)(abs(m)) * sphericalHarmonics.normalizedValue(m, latitude, longitude))))
+		def a(degree: Int, order: Int, x: Double) = DerivedLegendreFunctions.normalizedValue(n, m, x)
+		val rTerm = (0 to degree).map(pow(referenceEllipsoid.semimajorAxis / r, _))
+		val zOverR = position(2) / r
+		val a1 = (2 to degree).foldLeft(0.0)((sum, n) =>
+			sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
+				innerSum + m * a(n, m, zOverR) * e(n)(m)))
+		val a2 = (2 to degree).foldLeft(0.0)((sum, n) =>
+			sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
+				innerSum + m * a(n, m, zOverR) * f(n)(m)))
+		val a3 = (2 to degree).foldLeft(0.0)((sum, n) =>
+			sum + rTerm(n) * (0 to n - 1).foldLeft(0.0)((innerSum, m) =>
+				innerSum + m * a(n, m + 1, zOverR) * d(n)(m) * getPi(n, m + 1) / getPi(n, m)))
+		val a4 = (2 to degree).foldLeft(0.0)((sum, n) =>
+			sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
+				innerSum + (n + m + 1.0) * a(n, m, zOverR) * d(n)(m)))
+
+		referenceEllipsoid.semimajorAxis / r / r * (-position / r + (
+			(new DenseVector(a1, a2, a3)) - (position(2) * a3 / r + a4) * position / r))
 	}
 }
 
 object SphericalHarmonicGravityModel {
-	def parseWgs84CoefficientsFile(file:String, degree:Int) = {
+
+	def parseWgs84CoefficientsFile(file: String, degree: Int): Vector[Vector[(Double, Double)]] = {
 		val egmfile = io.Source.fromFile(file)
-		val coefficients = Vector.fill(degree, degree + 1)(0.0)
+		val coefficients = Array.fill(degree, degree + 1)((0.0, 0.0))
 		try {
-			var o = 0
-			egmfile.getLines.toStream.takeWhile(_ => o < degree).foreach(line => {
+			var m = 0
+			egmfile.getLines.toStream.takeWhile(_ => m < degree).foreach(line => {
 				val lineparts = line.trim.split("""\s+""")
-				val d = lineparts(0).toInt
-				o = lineparts(1).toInt
-				val cvalues = lineparts.slice(2,6).map(_.toDouble)
-				coefficients(d,o) = cvalues(0)
+				val n = lineparts(0).toInt
+				m = lineparts(1).toInt
+				val csvalues = lineparts.slice(2,6).map(_.toDouble)
+				coefficients(n)(m) = (csvalues(0), csvalues(1))
 				})
 		} finally {
 			egmfile.close
 		}
-		coefficients
+		coefficients.map(toVector).toVector
 	}
 }
 
 class PointMassGravityModel(
-	val gravitationalParameter:Double,
-	val normalizedPointMasses:Vector[(Vector3D,Double)] // (location, value) pairs
+	val gravitationalParameter: Double,
+	val normalizedPointMasses: Vector[(DenseVector[Double], Double)] // (location, value) pairs
 	) extends GravityModel {
-	def gravitationalAcceleration(position:Vector3D) = {
-		gravitationalParameter * normalizedPointMasses.foldLeft(Vector3D(0.0, 0.0, 0.0))((g, pointMass) => {
-			val r = pointMass._1.subtract(position)
-			g.subtract(pointMass._2 / r.getNormSq / r.getNorm, r)
+
+	def gravitationalAcceleration(position: DenseVector[Double]) = {
+		gravitationalParameter * normalizedPointMasses.foldLeft(new DenseVector(0.0, 0.0, 0.0))((g, pointMass) => {
+			val r = pointMass._1 - position
+			g - pointMass._2 / r.norm / r.norm * r / r.norm
 			})
 	}
 }
