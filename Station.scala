@@ -4,33 +4,41 @@ package estimator
 import breeze.linalg._
 import math.{atan2, Pi}
 
-trait Station {
+abstract class Station(
+	val location: DenseVector[Double],
+	val locationUncertaintyCovariance: DenseMatrix[Double],
+	val bias: DenseVector[Double],
+	val biasUncertaintyCovariance: DenseMatrix[Double]
+	) {
 	// ECEF coordinates
 
-	val location: DenseVector[Double]
+	def observationUncertaintyCovariance: DenseMatrix[Double]
 
-	val locationUncertainty: DenseVector[Double]
-
-	val bias: DenseVector[Double]
-
-	val biasUncertainty: DenseVector[Double]
-
-	def observation(state: DenseVector[Double], t: Double): DenseVector[Double]
+	def observationFromState(state: DenseVector[Double], t: Double): DenseVector[Double]
 }
 
 class RangeStation extends Station {
 
-	def observation(state: DenseVector[Double], t: Double) = 
-		new DenseVector(norm(state(0 to 2) - location))
+	override def observationUncertaintyCovariance = {
+		norm(locationUncertaintyCovariance) + biasUncertaintyCovariance
+	}
+
+	override def observationFromState(state: DenseVector[Double], t: Double) = {
+		(new DenseVector(norm(state(0 to 2) - location))) + bias
+	}
 }
 
 class RAEStation extends Station {
 	// only positive values for azimuth
 
-	def observation(state: DenseVector[Double], t: Double) = {
+	override def observationUncertaintyCovariance = {
+		// TODO
+	}
+
+	override def observationFromState(state: DenseVector[Double], t: Double) = {
 		val r = state(0 to 2) - location
 		val a = -atan2(r(1), r(0))
 		val e = atan2(r(2), r(0 to 1).norm)
-		new DenseVector(r.norm, if (a > 0.0) a else 2.0 * Pi + a, e)
+		(new DenseVector(r.norm, if (a > 0.0) a else 2.0 * Pi + a, e)) + bias
 	}
 }
