@@ -3,6 +3,4 @@ package estimator
 
 import breeze.linalg._
 
-class Estimate(
-	val state: DenseVector[Double],
-	val covariance: DenseMatrix[Double])
+case class Estimate(state: DenseVector[Double], covariance: DenseMatrix[Double])

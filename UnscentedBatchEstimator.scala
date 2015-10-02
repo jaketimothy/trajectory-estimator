@@ -8,18 +8,16 @@ import org.apache.commons.math3.ode.{ExpandableStatefulODE, FirstOrderDifferenti
 import org.apache.commons.math3.ode.nonstiff.AdamsBashforthIntegrator
 
 class UnscentedBatchEstimator(
-	motionEquations: (DenseVector[Double], Double) => DenseVector[Double],
-	stations: Map[String, Station],
+	val dimension: Int,
+	def motionEquations: (DenseVector[Double], Double) => DenseVector[Double],
+	val stations: Map[String, Station],
 	val alpha: Double,
 	val integrationMinStepSize: Double,
-	val integrationAbsErrorTol: Array[Double],
-	val integrationRelErrorTol: Array[Double]
+	val integrationAbsErrorTol: Double,
+	val integrationRelErrorTol: Double
 	) {
 
-	val n = stateEstimate.size
-
-	// ivp integration state
-	val ode = new ExpandableStatefulODE(new MotionEquationsWrapper(motionEquations, n))
+	val n = dimension
 
 	// weights
 	val (wM, wC) = UnscentedTransformation.weights(n, alpha)
@@ -49,18 +47,7 @@ class UnscentedBatchEstimator(
 			var preTime = time
 			for (i <- 0 until m) {
 				val (t, stationKey, observation) = observations(i)
-				chi += chi.last.map(x => {
-					ode.setTime(preTime)
-					ode.setPrimaryState(x.toArray)
-					val integrator = new AdamsBashforthIntegrator(
-						4,
-						integrationMinStepSize,
-						abs(t - preTime), // TODO : determine effective way of reducing user-input integration parameters
-						integrationAbsErrorTol,
-						integrationRelErrorTol)
-					integrator.integrate(ode, t)
-					new DenseVector(ode.getPrimaryState)
-					})
+				chi += chi.last.map(Integrator.step(_, motionEquations, t - preTime))
 				gamma += chi.last.map(observationEquations(_, t))
 
 				val iRange = i * n to (i + 1) * n - 1
