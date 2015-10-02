@@ -18,4 +18,6 @@ object Earth {
 
 	val earthEllipsoids = Map(
 		EarthModelType.WGS84 -> ReferenceEllipsoid(6378137.0, 1.0 / 298.257223563, 7292115.1467e-11, 3986004.418e8))
+
+	def apply(earthType: EarthModelType) = earthEllipsoids(earthType)
 }
