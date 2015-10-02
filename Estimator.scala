@@ -17,8 +17,8 @@ object Estimator extends App {
 	val sqlContext = new SQLContext(sc)
 
 	// read data (TODO : sanitize data?)
-	val stations = sqlContext.read.json(args(0))
-	val observations = sqlContext.read.json(args(1))
+	val stationData = sqlContext.read.json(args(0))
+	val observationData = sqlContext.read.json(args(1))
 	val outfilePath = args(2)
 
 	// initialize models
@@ -31,11 +31,13 @@ object Estimator extends App {
 		y(3 to 5) ++ earth.gravityModel.gravitationalAcceleration(y(0 to 2))
 	}
 
-	def observationEquations(x: DenseVector[Double]) = {
-
-	}
+	val stations: Vector[Station] = stationData.map(_ match {
+		case s if (s.bias.length == 1) => RangeStation(s)
+		case s if (s.bias.length == 3) => RAEStation(s)
+		}).toVector
 
 	// process
-	val batchProcessor = BatchProcessor(motionEquations, observationEquations, 0.15, Vector.fill(6)(0.15), Vector.fill(6)(0.15))
+	val batchProcessor = UnscentedBatchEstimator(
+		motionEquations, observationEquations, 0.15, Vector.fill(6)(0.15), Vector.fill(6)(0.15))
 	batchProcessor.run()
 }
