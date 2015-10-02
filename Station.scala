@@ -2,42 +2,51 @@
 package estimator
 
 import breeze.linalg._
-import math.{atan2, Pi}
+import math.{atan2, atan, Pi}
 
-abstract class Station(
-	val location: DenseVector[Double],
-	val locationUncertaintyCovariance: DenseMatrix[Double],
-	val bias: DenseVector[Double],
-	val biasUncertaintyCovariance: DenseMatrix[Double]
-	) {
+case class StationInfo(
+	location: Array[Double],
+	locationUncertaintyCovariance: Array[Double],
+	bias: Array[Double],
+	biasUncertaintyCovariance: Array[Double]
+	)
+
+abstract class Station(station: StationInfo) {
 	// ECEF coordinates
+
+	val location = DenseVector(station.location)
+	val locationUncertaintyCovariance = DenseMatrix(3, 3,
+		station.locationUncertaintyCovariance)
+	val bias = DenseVector(station.bias)
+	val biasUncertaintyCovariance = DenseMatrix(3, 3,
+		station.biasUncertaintyCovariance)
 
 	assume(location.length == 3)
 	assume(locationUncertaintyCovariance.rows == 3 && locationUncertaintyCovariance.cols == 3)
-
+	
 	def observationUncertaintyCovariance: DenseMatrix[Double]
 
 	def observationFromState(state: DenseVector[Double], t: Double): DenseVector[Double]
 }
 
-class RangeStation extends Station {
+case class RangeStation extends Station {
 
 	assume(bias.length == 1)
 	assume(biasUncertaintyCovariance.rows == 1 && biasUncertaintyCovariance.cols == 1)
 
 	override val observationUncertaintyCovariance = {
-		norm(locationUncertaintyCovariance) + biasUncertaintyCovariance
+		biasUncertaintyCovariance + linalg.norm(locationUncertaintyCovariance)
 	}
 
 	override def observationFromState(state: DenseVector[Double], t: Double) = {
 
 		require(state.length == 3)
 
-		(new DenseVector(norm(state(0 to 2) - location))) + bias
+		DenseVector(norm(state(0 to 2) - location)) + bias
 	}
 }
 
-class RAEStation extends Station {
+case class RAEStation extends Station {
 	// only positive values for azimuth
 
 	assume(bias.length == 3)
@@ -51,12 +60,12 @@ class RAEStation extends Station {
 			new Estimate(location, locationUncertaintyCovariance),
 			scale)
 		val gamma = chi.map(observationFromState(_, 0.0))
-		val y = (weights, gamma).zipped.map((w, g) => w._1 * g).sum
+		val y = (weights, gamma).zipped.map((w, g) => w._1 * g).reduce(_ + _)
 		biasUncertaintyCovariance + (weights, gamma).zipped.map(
 					(w, g) => {
 						val dY = g - y
 						w._2 * dY * dY.t
-						}).sum
+						}).reduce(_ + _)
 	}
 
 	override def observationFromState(state: DenseVector[Double], t: Double) = {
@@ -65,7 +74,7 @@ class RAEStation extends Station {
 
 		val r = state(0 to 2) - location
 		val a = -atan2(r(1), r(0))
-		val e = atan(r(2) / r(0 to 1).norm)
-		(new DenseVector(r.norm, if (a > 0.0) a else 2.0 * Pi + a, e)) + bias
+		val e = atan(r(2) / norm(r(0 to 1)))
+		DenseVector(norm(r), if (a > 0.0) a else 2.0 * Pi + a, e) + bias
 	}
 }
