@@ -1,9 +1,9 @@
 // UnscentedBatchEstimator.scala
 package estimator
 
+import breeze.linalg._
 import math.{abs, sqrt}
 import org.apache.spark.rdd.RDD
-import breeze.linalg._
 import org.apache.commons.math3.ode.{ExpandableStatefulODE, FirstOrderDifferentialEquations}
 import org.apache.commons.math3.ode.nonstiff.AdamsBashforthIntegrator
 
@@ -19,14 +19,11 @@ class UnscentedBatchEstimator(
 	val n = stateEstimate.size
 
 	// ivp integration state
-	val integrationState = new ExpandableStatefulODE(new MotionEquationsWrapper(motionEquations, n))
+	val ode = new ExpandableStatefulODE(new MotionEquationsWrapper(motionEquations, n))
 
 	// weights
-	val lambda = 3.0 * alpha * alpha - n
-	val wi = Array.fill(2 * n){1.0 / (2.0 * (n + lambda))}
-	val wM = new DenseVector(lambda / (n + lambda) +: wi)
-	val wC = new DenseVector((wM(0) + 3.0 - alpha * alpha +: wi)
-	val gamma = sqrt(n + lambda)
+	val (wM, wC) = UnscentedTransformation.weights(n, alpha)
+	val scaleFactor = sqrt(3.0) * alpha
 
 	def estimate(
 		time: Double,
@@ -36,8 +33,8 @@ class UnscentedBatchEstimator(
 
 		val m = observations.length
 
-		var xHat = initialEstimate.state
-		var pHat = initialEstimate.covariance
+		val estimate = new collection.mutable.ArrayBuffer[Estimate]()
+		estimate += initialEstimate
 		var rmsOld, rmsNew = 0.0
 		do {
 			val chi = new collection.mutable.ArrayBuffer[Vector[DenseVector[Double]]]()
@@ -48,51 +45,52 @@ class UnscentedBatchEstimator(
 			val pY = DenseMatrix.zeros[Double](n * m, n)
 			val pXY = DenseMatrix.zeros[Double](n * m, n)
 
-			chi += UnscentedTransformation.sigmaPoints(xHat, pHat, gamma)
+			chi += UnscentedTransformation.sigmaPoints(estimate.last, scaleFactor)
 			var preTime = time
 			for (i <- 0 until m) {
-				val (t, station, observation) = observations(i)
+				val (t, stationKey, observation) = observations(i)
 				chi += chi.last.map(x => {
-					integrationState.setTime(preTime)
-					integrationState.setPrimaryState(x.toArray)
+					ode.setTime(preTime)
+					ode.setPrimaryState(x.toArray)
 					val integrator = new AdamsBashforthIntegrator(
 						4,
 						integrationMinStepSize,
 						abs(t - preTime), // TODO : determine effective way of reducing user-input integration parameters
 						integrationAbsErrorTol,
 						integrationRelErrorTol)
-					integrator.integrate(integrationState, t)
-					new DenseVector(integrationState.getPrimaryState)
+					integrator.integrate(ode, t)
+					new DenseVector(ode.getPrimaryState)
 					})
 				gamma += chi.last.map(observationEquations(_, t))
 
 				val iRange = i * n to (i + 1) * n - 1
-				yBar(iRange) = gamma.last.zip(wM).foldLeft(DenseVector.zeros[Double](n))(
-					(sumY, yw) => sumY + yw._1 * yw._2)
+				yBar(iRange) = (wM, gamma.last).zipped.map((w, y) => w * y).sum
 				y(iRange) = observation
-				r(iRange, ::) = stations(station).observationUncertaintyCovariance
+				r(iRange, ::) = stations(stationKey).observationUncertaintyCovariance
 
-				pY(iRange, ::) = r(iRange, ::) + gamma.last.zip(wC).foldLeft(DenseMatrix.zeros[Double](n, n))(
-					(sumP, yw) => {
-						val dY = yw._1 - yBar
-						sumP + wx._2 * dY * dY.t
-						})
-				pXY(iRange, ::) = (0 to 2 * n).foldLeft(DenseMatrix.zeros[Double](n, n))(
-					(sumP, j) => {
-						val dX = chi.last(j) - chi.last.head
-						val dY = gamma.last(j) - yBar(iRange)
-						sumP + wC(j) * dX * dY.t
-						})
+				pY(iRange, ::) = r(iRange, ::) + (wC, gamma.last).zipped.map(
+					(w, y) => {
+						val dY = y - yBar(iRange)
+						w * dY * dY.t
+						}).sum
+				pXY(iRange, ::) = (wC, chi.last, gamma.last).zipped.map(
+					(w, x, y) => {
+						val dY = y - yBar(iRange)
+						w * (x - chi.last.head) * dY.t
+						}).sum
 
 				preTime = t
 			}
 
 			val k = (pY.t \ pXY.t).t
 			val dY = y - yBar
-			xHat = xHat + k * dY
+			estimate += new Estimate(
+				estimate.last.state + k * dY,
+				estimate.head.covariance - k * pY * k.t)
 			rmsOld = rmsNew
-			rmsNew = (dY.t * inv(r) * dY).sum / (n * m)
+			rmsNew = (dY.t * (r \ dY)).sum / (n * m)
 		} while (abs(rmsNew - rmsOld) / rmsOld < 1.0e5)
-		new Estimate(xHat, )
+
+		estimate.last
 	}
 }
