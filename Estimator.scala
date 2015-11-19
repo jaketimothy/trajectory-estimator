@@ -25,9 +25,10 @@ object Estimator extends App {
 	val earthHarmonicCoefficients = SphericalHarmonicGravityModel.parseWgs84CoefficientsFile("egmfile", 16) // TODO : how to specify egm file?
 	val earth = Earth(Earth.EarthModelType.WGS84, earthHarmonicCoefficients)
 
-	// define ivp ode
-	def motionEquations(t: Double, y: DenseVector[Double]) = {
-		// dy = f(t, y), y = [y, ydot]
+	// ivp ode
+	def motionEquations(y: DenseVector[Double], t: Double) = {
+		// dy = f(y, t), y = [y, ydot]
+		
 		y(3 to 5) ++ earth.gravityModel.gravitationalAcceleration(y(0 to 2))
 	}
 

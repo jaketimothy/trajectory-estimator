@@ -11,31 +11,50 @@ case class StationInfo(
 	biasUncertaintyCovariance: Array[Double]
 	)
 
-abstract class Station(station: StationInfo) {
+trait Station {
 	// ECEF coordinates
 
-	val location = DenseVector(station.location)
-	val locationUncertaintyCovariance = DenseMatrix(3, 3,
-		station.locationUncertaintyCovariance)
-	val bias = DenseVector(station.bias)
-	val biasUncertaintyCovariance = DenseMatrix(3, 3,
-		station.biasUncertaintyCovariance)
+	def location: DenseVector[Double]
+	def locationUncertaintyCovariance: DenseMatrix[Double]
+	def bias: DenseVector[Double]
+	def biasUncertaintyCovariance: DenseMatrix[Double]
 
-	assume(location.length == 3)
-	assume(locationUncertaintyCovariance.rows == 3 && locationUncertaintyCovariance.cols == 3)
-	
 	def observationUncertaintyCovariance: DenseMatrix[Double]
 
 	def observationFromState(state: DenseVector[Double], t: Double): DenseVector[Double]
 }
 
-case class RangeStation extends Station {
+object Station {
 
+	// Station generator
+	def apply(info: StationInfo) = info.bias.length match {
+		case 1 => RangeStation(
+			DenseVector(info.location),
+			new DenseMatrix(3, 3, info.locationUncertaintyCovariance),
+			DenseVector(info.bias),
+			new DenseMatrix(1, 1, info.biasUncertaintyCovariance))
+		case 3 => RAEStation(
+			DenseVector(info.location),
+			new DenseMatrix(3, 3, info.locationUncertaintyCovariance),
+			DenseVector(info.bias),
+			new DenseMatrix(3, 3, info.biasUncertaintyCovariance))
+	}
+}
+
+case class RangeStation(
+	location: DenseVector[Double],
+	locationUncertaintyCovariance: DenseMatrix[Double],
+	bias: DenseVector[Double],
+	biasUncertaintyCovariance: DenseMatrix[Double]
+	) extends Station {
+
+	assume(location.length == 3)
+	assume(locationUncertaintyCovariance.rows == 3 && locationUncertaintyCovariance.cols == 3)
 	assume(bias.length == 1)
 	assume(biasUncertaintyCovariance.rows == 1 && biasUncertaintyCovariance.cols == 1)
 
 	override val observationUncertaintyCovariance = {
-		biasUncertaintyCovariance + linalg.norm(locationUncertaintyCovariance)
+		biasUncertaintyCovariance + estimator.linalg.norm(locationUncertaintyCovariance)
 	}
 
 	override def observationFromState(state: DenseVector[Double], t: Double) = {
@@ -46,9 +65,16 @@ case class RangeStation extends Station {
 	}
 }
 
-case class RAEStation extends Station {
+case class RAEStation(
+	location: DenseVector[Double],
+	locationUncertaintyCovariance: DenseMatrix[Double],
+	bias: DenseVector[Double],
+	biasUncertaintyCovariance: DenseMatrix[Double]
+	) extends Station {
 	// only positive values for azimuth
 
+	assume(location.length == 3)
+	assume(locationUncertaintyCovariance.rows == 3 && locationUncertaintyCovariance.cols == 3)
 	assume(bias.length == 3)
 	assume(biasUncertaintyCovariance.rows == 3 && biasUncertaintyCovariance.cols == 3)
 

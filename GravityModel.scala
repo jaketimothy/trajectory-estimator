@@ -2,7 +2,7 @@
 package estimator.planetmodel
 
 import math._
-import breeze.linalg._
+import breeze.linalg.{DenseVector, DenseMatrix, norm, *}
 import estimator.functions.DerivedLegendreFunctions
 
 trait GravityModel {
@@ -14,7 +14,7 @@ trait GravityModel {
 class PointGravityModel(val gravitationalParameter: Double) extends GravityModel {
 
 	override def gravitationalAcceleration(position: DenseVector[Double]) = 
-		-gravitationalParameter / pow(position.norm, 3) * position
+		-gravitationalParameter / pow(norm(position), 3) * position
 }
 
 class EllipsoidalGravityModel(val referenceEllipsoid: ReferenceEllipsoid) extends GravityModel {
@@ -28,8 +28,8 @@ class EllipsoidalGravityModel(val referenceEllipsoid: ReferenceEllipsoid) extend
 		val a = referenceEllipsoid.semimajorAxis
 
 		val p = sqrt(position(0) * position(0) + position(1) * position(1))
-		val u = sqrt(0.5 * (position.norm * position.norm - c * c) *
-			(1.0 + sqrt(1.0 + 4.0 * c * c * position(2) * position(2) / pow(position.norm * position.norm - c * c, 2))))
+		val u = sqrt(0.5 * (norm(position) * norm(position) - c * c) *
+			(1.0 + sqrt(1.0 + 4.0 * c * c * position(2) * position(2) / pow(norm(position) * norm(position) - c * c, 2))))
 		val beta = atan(position(2) / u * sqrt(u * u + c * c) / p)
 		val w = sqrt((u * u + pow(c * sin(beta), 2)) / (u * u + c * c))
 		val q = 0.5 * ((1.0 + 3.0 * u * u / (c * c)) * atan(c / u) - 3.0 * u / c)
@@ -41,7 +41,7 @@ class EllipsoidalGravityModel(val referenceEllipsoid: ReferenceEllipsoid) extend
 			omega * omega * u * pow(cos(beta), 2)) / w
 		val gammaBeta = (a * a / sqrt(u * u + c * c) * q / q0 - sqrt(u * u + c * c)) *
 			omega * omega * sin(beta) * cos(beta) / w
-		val gammaEllipsoidal = new DenseVector(gammaU, gammaBeta, 0.0)
+		val gammaEllipsoidal = DenseVector(gammaU, gammaBeta, 0.0)
 
 		val r = u / (w * sqrt(u * u + c * c))
 		val ellipsoidalToCartesian = new DenseMatrix(3, 3, Array(
@@ -61,14 +61,14 @@ class SphericalHarmonicGravityModel(
 	def degree = harmonicCoefficients.length - 1
 
 	// Jones, equation 2.15
-	private val getPi = Vector.tabulate(degree + 1, degree + 1){
-		case(n, m) => sqrt((n + m + 1.0) * (n - m) * (if (m == 0) 0.5 else 1.0))
-	}
+	private val getPi = Vector.tabulate(degree + 1, degree + 1)((n, m) => {
+		sqrt((n + m + 1.0) * (n - m) * (if (m == 0) 0.5 else 1.0))
+	})
 
 	override def gravitationalAcceleration(position: DenseVector[Double]) = {
 		// implemented from the Cartesian (Gottlieb) model [Jones, section 2.1.4]
 		
-		val r = position.norm
+		val r = norm(position)
 		val pq1 = (position(0) / r, position(1) / r)
 		val pq = (1.0, 0.0) +: (1 to degree).scanLeft(pq1)((pqPrev, i) => 
 			(pq1._1 * pqPrev._1 - pq1._2 * pqPrev._1, pq1._2 * pqPrev._2 + pq1._1 * pqPrev._2))
@@ -77,7 +77,7 @@ class SphericalHarmonicGravityModel(
 		val e = harmonicCoefficients.map(0.0 +: _.tail.zip(pq.dropRight(1)).map{case(csnm, pqm) => csnm._1 * pqm._1 + csnm._2 * pqm._2})
 		val f = harmonicCoefficients.map(csn => csn.zip(pq).map{case(csnm, pqm) => csnm._2 * pqm._1 - csnm._1 * pqm._2})
 
-		def a(degree: Int, order: Int, x: Double) = DerivedLegendreFunctions.normalizedValue(n, m, x)
+		def a(degree: Int, order: Int, x: Double) = DerivedLegendreFunctions.normalizedValue(degree, order, x)
 		val rTerm = (0 to degree).map(pow(referenceEllipsoid.semimajorAxis / r, _))
 		val zOverR = position(2) / r
 		val a1 = (2 to degree).foldLeft(0.0)((sum, n) =>
@@ -88,13 +88,13 @@ class SphericalHarmonicGravityModel(
 				innerSum + m * a(n, m, zOverR) * f(n)(m)))
 		val a3 = (2 to degree).foldLeft(0.0)((sum, n) =>
 			sum + rTerm(n) * (0 to n - 1).foldLeft(0.0)((innerSum, m) =>
-				innerSum + m * a(n, m + 1, zOverR) * d(n)(m) * getPi(n, m + 1) / getPi(n, m)))
+				innerSum + m * a(n, m + 1, zOverR) * d(n)(m) * getPi(n)(m + 1) / getPi(n)(m)))
 		val a4 = (2 to degree).foldLeft(0.0)((sum, n) =>
 			sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
 				innerSum + (n + m + 1.0) * a(n, m, zOverR) * d(n)(m)))
 
 		referenceEllipsoid.semimajorAxis / r / r * (-position / r + (
-			(new DenseVector(a1, a2, a3)) - (position(2) * a3 / r + a4) * position / r))
+			(DenseVector(a1, a2, a3)) - (position(2) * a3 / r + a4) * position / r))
 	}
 }
 
@@ -115,7 +115,7 @@ object SphericalHarmonicGravityModel {
 		} finally {
 			egmfile.close
 		}
-		coefficients.map(toVector).toVector
+		coefficients.map(_.toVector).toVector
 	}
 }
 
@@ -125,9 +125,10 @@ class PointMassGravityModel(
 	) extends GravityModel {
 
 	override def gravitationalAcceleration(position: DenseVector[Double]) = {
-		gravitationalParameter * normalizedPointMasses.foldLeft(new DenseVector(0.0, 0.0, 0.0))((g, pointMass) => {
+		gravitationalParameter * normalizedPointMasses.foldLeft(DenseVector(0.0, 0.0, 0.0))((g, pointMass) => {
 			val r = pointMass._1 - position
-			g - pointMass._2 / r.norm / r.norm * r / r.norm
+			val rMag = norm(r)
+			g - pointMass._2 / rMag / rMag * r / rMag
 			})
 	}
 }

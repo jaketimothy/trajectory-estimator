@@ -22,16 +22,16 @@ class ReferenceEllipsoid(
 	def ellipsoidalToCartesian(state: (Double,Double,Double)) = {
 		val (latitude, longitude, altitude) = state
 		val n = radiusOfCurvature(latitude)
-		new DenseVector(
+		DenseVector(
 			(n + altitude) * cos(latitude) * cos(longitude),
 			(n + altitude) * cos(latitude) * sin(longitude),
 			(axisRatio * axisRatio * n + altitude) * sin(longitude))
 	}
 
 	def cartesianToEllipsoidal(state: DenseVector[Double]) = {
-		val p = state(0 to 1).norm
-		val latitude = atan(state(2) / (axisRatio * axisRatio * p))
-		var n, altitude, latitude0: Double
+		val p = norm(state(0 to 1))
+		var latitude = atan(state(2) / (axisRatio * axisRatio * p))
+		var n, altitude, latitude0 = 0.0
 		do {
 			latitude0 = latitude
 			n = radiusOfCurvature(latitude0)

@@ -22,14 +22,15 @@ object DerivedLegendreFunctions {
 		case n if (n == 0 || n == 1) => cachedA(n)
 		case n if (n >= 2) => {
 			if (n > cachedA.length - 1) {
-				(cachedA.length - 1 to n).foreach{
-					val aLess1 = cachedA(_ - 1)
-					val aLess2 = cachedA(_ - 2)
-					val aTemp = (0 to _ - 1).map(m => 
-						aLess1(m).multiply(new PolynomialFunction(Array(0.0, getB(_, m))))
-						.subtract(aLess2(m).multiply(new PolynomialFunction(Array(getB(_, m) / getB(_ - 1, m))))))
-					cachedA += aTemp :+ aLess1(_ - 1).multiply(new PolynomialFunction(Array(sqrt((2.0 * _ + 1.0) / (2.0 * _)))))
-				}
+				(cachedA.length - 1 to n).foreach(d => {
+					val aLess1 = cachedA(d - 1)
+					val aLess2 = cachedA(d - 2)
+					val aTemp = (0 to d - 1).map(m => {
+						aLess1(m).multiply(new PolynomialFunction(Array(0.0, getB(d, m))))
+						.subtract(aLess2(m).multiply(new PolynomialFunction(Array(getB(d, m) / getB(d - 1, m)))))
+					}).toVector
+					cachedA += aTemp :+ aLess1(d - 1).multiply(new PolynomialFunction(Array(sqrt((2.0 * d + 1.0) / (2.0 * d)))))
+				})
 			}
 			cachedA(n)
 		}
