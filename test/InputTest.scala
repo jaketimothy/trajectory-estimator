@@ -19,6 +19,7 @@ object InputTest extends App {
 
 	val stationsIn = read[List[StationInfo]](
 		try stationSource.getLines.mkString finally stationSource.close)
+	val stations = stationsIn.map(Station(_))
 	// val stationsOut = List(
 	// 	StationInfo(
 	// 		List(-2516715.36114, -4653003.08089, 3551245.35929),
@@ -28,5 +29,6 @@ object InputTest extends App {
 	// 	)
 
 	println(stationsIn)
+	println(stations)
 	// Files.write(Paths.get("TestOutput.json"), writePretty(stationsOut).getBytes(utf8))
 }
