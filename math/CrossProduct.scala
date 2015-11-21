@@ -1,5 +1,5 @@
 // CrossProduct.scala
-package estimator.linalg
+package estimator.math
 
 import breeze.linalg.{DenseVector, DenseMatrix, *}
 

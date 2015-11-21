@@ -9,7 +9,7 @@ object Integrator {
 
 	def step(
 		state: DenseVector[Double],
-		motionEquations: (DenseVector[Double], Double) => DenseVector[Double],
+		motionEquations: FirstOrderDifferentialEquations,
 		dt: Double,
 		minStepSize: Double = 0.0,
 		absErrorTol: Double = 1e-6,
@@ -22,22 +22,10 @@ object Integrator {
 			0.1 * math.abs(dt),
 			absErrorTol,
 			relErrorTol)
-		val ode = new ExpandableStatefulODE(new MotionEquationsWrapper(motionEquations, state.length))
+		val ode = new ExpandableStatefulODE(motionEquations)
 		ode.setTime(0.0)
 		ode.setPrimaryState(state.toArray)
 		integrator.integrate(ode, dt)
 		DenseVector(ode.getPrimaryState)
-	}
-}
-
-class MotionEquationsWrapper(
-	motionEquations: (DenseVector[Double], Double) => DenseVector[Double],
-	dimension: Int
-	) extends FirstOrderDifferentialEquations {
-
-	override val getDimension = dimension
-
-	override def computeDerivatives(t: Double, y: Array[Double], yDot: Array[Double]): Unit = {
-		yDot = motionEquations(DenseVector(y), t).toArray
 	}
 }

@@ -11,74 +11,71 @@ case class StationInfo(
 	biasUncertaintyCovariance: Array[Double]
 	)
 
-trait Station {
+abstract class Station(info: StationInfo) {
 	// ECEF coordinates
 
-	def location: DenseVector[Double]
-	def locationUncertaintyCovariance: DenseMatrix[Double]
-	def bias: DenseVector[Double]
-	def biasUncertaintyCovariance: DenseMatrix[Double]
+	assume(info.location.size == 3)
+	assume(info.locationUncertaintyCovariance.size == 9)
+	assume(info.bias.size * info.bias.size == info.biasUncertaintyCovariance.size)
+	
+	val location = DenseVector(info.location)
+	val locationUncertaintyCovariance = new DenseMatrix(3, 3,
+		info.locationUncertaintyCovariance)
+	val bias = DenseVector(info.bias)
+	val biasUncertaintyCovariance = new DenseMatrix(info.bias.size, info.bias.size,
+		info.biasUncertaintyCovariance)
 
 	def observationUncertaintyCovariance: DenseMatrix[Double]
 
+	// assumes state is in positionVector ++ velocityVector order
 	def observationFromState(state: DenseVector[Double], t: Double): DenseVector[Double]
 }
 
 object Station {
 
-	// Station generator
-	def apply(info: StationInfo) = info.bias.length match {
-		case 1 => RangeStation(
-			DenseVector(info.location),
-			new DenseMatrix(3, 3, info.locationUncertaintyCovariance),
-			DenseVector(info.bias),
-			new DenseMatrix(1, 1, info.biasUncertaintyCovariance))
-		case 3 => RAEStation(
-			DenseVector(info.location),
-			new DenseMatrix(3, 3, info.locationUncertaintyCovariance),
-			DenseVector(info.bias),
-			new DenseMatrix(3, 3, info.biasUncertaintyCovariance))
+	def apply(info: StationInfo): Station = info.bias.length match {
+		case 1 => RangeStation(info)
+		case 3 => RAEStation(info)
+	}
+
+	def apply(
+		location: Array[Double],
+		locationUncertaintyCovariance: Array[Double],
+		bias: Array[Double],
+		biasUncertaintyCovariance: Array[Double]
+		): Station = {
+		apply(StationInfo(
+			location,
+			locationUncertaintyCovariance,
+			bias,
+			biasUncertaintyCovariance))
 	}
 }
 
-case class RangeStation(
-	location: DenseVector[Double],
-	locationUncertaintyCovariance: DenseMatrix[Double],
-	bias: DenseVector[Double],
-	biasUncertaintyCovariance: DenseMatrix[Double]
-	) extends Station {
+case class RangeStation(info: StationInfo) extends Station(info) {
 
-	assume(location.length == 3)
-	assume(locationUncertaintyCovariance.rows == 3 && locationUncertaintyCovariance.cols == 3)
-	assume(bias.length == 1)
-	assume(biasUncertaintyCovariance.rows == 1 && biasUncertaintyCovariance.cols == 1)
+	assume(bias.size == 1)
 
 	override val observationUncertaintyCovariance = {
-		biasUncertaintyCovariance + estimator.linalg.norm(locationUncertaintyCovariance)
+
+		biasUncertaintyCovariance + linalg.norm(locationUncertaintyCovariance)
 	}
 
 	override def observationFromState(state: DenseVector[Double], t: Double) = {
 
-		require(state.length == 3)
+		require(state.size >= 3)
 
 		DenseVector(norm(state(0 to 2) - location)) + bias
 	}
 }
 
-case class RAEStation(
-	location: DenseVector[Double],
-	locationUncertaintyCovariance: DenseMatrix[Double],
-	bias: DenseVector[Double],
-	biasUncertaintyCovariance: DenseMatrix[Double]
-	) extends Station {
+case class RAEStation(info: StationInfo) extends Station(info) {
 	// only positive values for azimuth
 
-	assume(location.length == 3)
-	assume(locationUncertaintyCovariance.rows == 3 && locationUncertaintyCovariance.cols == 3)
-	assume(bias.length == 3)
-	assume(biasUncertaintyCovariance.rows == 3 && biasUncertaintyCovariance.cols == 3)
+	assume(bias.size == 3)
 
 	override val observationUncertaintyCovariance = {
+
 		val alpha = 1.0
 		val weights = UnscentedTransformation.weights(3, alpha)
 		val scale = UnscentedTransformation.scaleFactor(alpha)
@@ -96,7 +93,7 @@ case class RAEStation(
 
 	override def observationFromState(state: DenseVector[Double], t: Double) = {
 
-		require(state.length == 3)
+		require(state.size >= 3)
 
 		val r = state(0 to 2) - location
 		val a = -atan2(r(1), r(0))

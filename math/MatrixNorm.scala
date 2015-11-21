@@ -1,5 +1,5 @@
 // MatrixNorm.scala
-package estimator.linalg
+package estimator.math
 
 import breeze.generic.UFunc
 import breeze.linalg._

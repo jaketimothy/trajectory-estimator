@@ -4,12 +4,8 @@ package estimator.planetmodel
 import math._
 import breeze.linalg._
 
-class ReferenceEllipsoid(
-	val semimajorAxis: Double, // meters
-	val flattening: Double,
-	val angularVelocity: Double, // radians/second
-	val gravitationalParameter: Double // meters^3/seconds^2, exoatmospheric
-	) {
+case class ReferenceEllipsoid(semimajorAxis: Double, flattening: Double) {
+	// distances in meters, angles in radians
 
 	val eccentricity = sqrt((2.0 - flattening) * flattening)
 	val linearEccentricity = semimajorAxis * eccentricity

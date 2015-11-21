@@ -3,7 +3,7 @@ package estimator.planetmodel
 
 import math._
 import breeze.linalg.{DenseVector, DenseMatrix, norm, *}
-import estimator.functions.DerivedLegendreFunctions
+import estimator.math.DerivedLegendreFunctions
 
 trait GravityModel {
 	// coordinates are ECEF
@@ -17,15 +17,20 @@ class PointGravityModel(val gravitationalParameter: Double) extends GravityModel
 		-gravitationalParameter / pow(norm(position), 3) * position
 }
 
-class EllipsoidalGravityModel(val referenceEllipsoid: ReferenceEllipsoid) extends GravityModel {
-	
+class EllipsoidalGravityModel(
+	referenceEllipsoid: ReferenceEllipsoid,
+	angularVelocity: Double,
+	gravitationalParameter: Double
+	) extends GravityModel {
+
+	private val c = referenceEllipsoid.linearEccentricity
+	private val b = referenceEllipsoid.semiminorAxis
+	private val omega = angularVelocity
+	private val a = referenceEllipsoid.semimajorAxis
+	private val mu = gravitationalParameter
+
 	override def gravitationalAcceleration(position: DenseVector[Double]) = {
 		// implemented from WGS84 (Jan 2000), chapter 4
-
-		val c = referenceEllipsoid.linearEccentricity
-		val b = referenceEllipsoid.semiminorAxis
-		val omega = referenceEllipsoid.angularVelocity
-		val a = referenceEllipsoid.semimajorAxis
 
 		val p = sqrt(position(0) * position(0) + position(1) * position(1))
 		val u = sqrt(0.5 * (norm(position) * norm(position) - c * c) *
@@ -36,9 +41,8 @@ class EllipsoidalGravityModel(val referenceEllipsoid: ReferenceEllipsoid) extend
 		val q0 = 0.5 * ((1.0 + 3.0 * b * b / (c * c)) * atan(c / b) - 3.0 * b / c)
 		val qPrime = 3.0 * (1.0 + u * u / (c * c)) * (1.0 - u / c * atan(c / u)) - 1.0
 
-		val gammaU = (-(referenceEllipsoid.gravitationalParameter + 
-			omega * omega * a * a * c * qPrime / q0 * (0.5 * pow(sin(beta), 2) - 1.0 / 6.0)) / (u * u + c * c) +
-			omega * omega * u * pow(cos(beta), 2)) / w
+		val gammaU = (-(gravitationalParameter + omega * omega * a * a * c * qPrime / q0 * (0.5 * pow(sin(beta), 2) - 1.0 / 6.0)) 
+			/ (u * u + c * c) + omega * omega * u * pow(cos(beta), 2)) / w
 		val gammaBeta = (a * a / sqrt(u * u + c * c) * q / q0 - sqrt(u * u + c * c)) *
 			omega * omega * sin(beta) * cos(beta) / w
 		val gammaEllipsoidal = DenseVector(gammaU, gammaBeta, 0.0)
