@@ -19,3 +19,10 @@ class EllipsoidalWGS84Earth extends WGS84Earth {
         referenceEllipsoid, angularVelocity, gravitationalParameter)
 }
 
+class HarmonicWGS84Earth(
+	harmonicCoefficients: Vector[Vector[(Double, Double)]]
+	) extends WGS84Earth {
+
+	override val gravityModel = new SphericalHarmonicGravityModel(
+		referenceEllipsoid, harmonicCoefficients)
+}
