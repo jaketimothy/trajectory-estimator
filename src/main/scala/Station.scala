@@ -1,8 +1,8 @@
 // Station.scala
 package com.jaketimothy.estimator
 
-import breeze.linalg._
-import math.{atan2, atan, Pi}
+import breeze.linalg.{*, norm}
+import scala.math.{atan2, atan, Pi}
 
 case class StationInfo(
 	location: Array[Double],
@@ -58,7 +58,7 @@ case class RangeStation(info: StationInfo) extends Station(info) {
 
 	override val observationUncertaintyCovariance = {
 
-		biasUncertaintyCovariance + linalg.norm(locationUncertaintyCovariance)
+		biasUncertaintyCovariance + math.norm(locationUncertaintyCovariance)
 	}
 
 	override def observationFromState(state: DenseVector[Double], t: Double) = {
@@ -83,11 +83,11 @@ case class RAEStation(info: StationInfo) extends Station(info) {
 			new Estimate(location, locationUncertaintyCovariance),
 			scale)
 		val gamma = chi.map(observationFromState(_, 0.0))
-		val y = (weights, gamma).zipped.map((w, g) => w._1 * g).reduce(_ + _)
-		biasUncertaintyCovariance + (weights, gamma).zipped.map(
+		val y = (weights._1, gamma).zipped.map((w, g) => w * g).reduce(_ + _)
+		biasUncertaintyCovariance + (weights._2, gamma).zipped.map(
 					(w, g) => {
 						val dY = g - y
-						w._2 * dY * dY.t
+						w * dY * dY.t
 						}).reduce(_ + _)
 	}
 

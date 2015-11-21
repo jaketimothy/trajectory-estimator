@@ -1,10 +1,10 @@
 // UnscentedBatchEstimator.scala
 package com.jaketimothy.estimator
 
-import breeze.linalg._
-import math.{abs, sqrt}
+import breeze.linalg.*
+import scala.math.{abs, sqrt}
 // import org.apache.spark.rdd.RDD
-import org.apache.commons.math3.ode.{ExpandableStatefulODE, FirstOrderDifferentialEquations}
+import org.apache.commons.math3.ode.ExpandableStatefulODE
 import org.apache.commons.math3.ode.nonstiff.AdamsBashforthIntegrator
 
 class UnscentedBatchEstimator(
@@ -48,23 +48,23 @@ class UnscentedBatchEstimator(
 			for (i <- 0 until m) {
 				val (t, stationKey, observation) = observations(i)
 				chi += chi.last.map(Integrator.step(_, motionEquations, t - preTime))
-				gamma += chi.last.map(observationEquations(_, t))
+				gamma += chi.last.map(stations(stationKey).observationFromState(_, t))
 
 				val iRange = i * n to (i + 1) * n - 1
-				yBar(iRange) = (wM, gamma.last).zipped.map((w, y) => w * y).sum
-				y(iRange) = observation
-				r(iRange, ::) = stations(stationKey).observationUncertaintyCovariance
+				yBar(iRange) := (wM, gamma.last).zipped.map((w, y) => w * y).reduce(_ + _)
+				y(iRange) := observation
+				r(iRange, ::) := stations(stationKey).observationUncertaintyCovariance
 
-				pY(iRange, ::) = r(iRange, ::) + (wC, gamma.last).zipped.map(
+				pY(iRange, ::) := r(iRange, ::) + (wC, gamma.last).zipped.map(
 					(w, y) => {
 						val dY = y - yBar(iRange)
 						w * dY * dY.t
-						}).sum
-				pXY(iRange, ::) = (wC, chi.last, gamma.last).zipped.map(
+						}).reduce(_ + _)
+				pXY(iRange, ::) := (wC, chi.last, gamma.last).zipped.map(
 					(w, x, y) => {
 						val dY = y - yBar(iRange)
 						w * (x - chi.last.head) * dY.t
-						}).sum
+						}).reduce(_ + _)
 
 				preTime = t
 			}
@@ -75,7 +75,7 @@ class UnscentedBatchEstimator(
 				estimate.last.state + k * dY,
 				estimate.head.covariance - k * pY * k.t)
 			rmsOld = rmsNew
-			rmsNew = (dY.t * (r \ dY)).sum / (n * m)
+			rmsNew = (dY.t * (r \ dY)) / (n * m)
 		} while (abs(rmsNew - rmsOld) / rmsOld < 1.0e5)
 
 		estimate.last

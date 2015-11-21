@@ -10,7 +10,6 @@ import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization
 import org.json4s.jackson.Serialization.{read, writePretty}
 import com.jaketimothy.estimator.planetmodel._
-import org.apache.commons.math3.ode.FirstOrderDifferentialEquations
 import breeze.linalg._
 
 object Estimator extends App {
@@ -23,6 +22,8 @@ object Estimator extends App {
 	// val sqlContext = new SQLContext(sc)
 
 	// read data (TODO : sanitize data?)
+	val utf8 = java.nio.charset.StandardCharsets.UTF_8
+	implicit val formats = Serialization.formats(NoTypeHints)
 	val stationSource = io.Source.fromFile(args(0))
 	val stationsIn = read[List[StationInfo]](
 		try stationSource.getLines.mkString finally stationSource.close)
@@ -48,7 +49,7 @@ object Estimator extends App {
 	}
 
 	// process
-	val batchProcessor = UnscentedBatchEstimator(
-		MotionEquations, observationEquations, 0.15, Vector.fill(6)(0.15), Vector.fill(6)(0.15))
-	batchProcessor.estimate()
+	// val batchProcessor = new UnscentedBatchEstimator(
+	// 	MotionEquations, observationEquations, 0.15, Vector.fill(6)(0.15), Vector.fill(6)(0.15))
+	//batchProcessor.estimate()
 }
