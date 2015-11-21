@@ -4,7 +4,7 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization
 import org.json4s.jackson.Serialization.{read, writePretty}
-import estimator._
+import com.jaketimothy.estimator._
 //import breeze.linalg._
 
 object InputTest extends App {

@@ -1,9 +1,9 @@
 // GravityModel.scala
-package estimator.planetmodel
+package com.jaketimothy.estimator.planetmodel
 
 import math._
 import breeze.linalg.{DenseVector, DenseMatrix, norm, *}
-import estimator.math.DerivedLegendreFunctions
+import com.jaketimothy.estimator.math.DerivedLegendreFunctions
 
 trait GravityModel {
 	// coordinates are ECEF

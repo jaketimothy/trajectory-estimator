@@ -1,5 +1,5 @@
 // Estimate.scala
-package estimator
+package com.jaketimothy.estimator
 
 import breeze.linalg._
 

@@ -1,5 +1,5 @@
 // ReferenceEllipsoid.scala
-package estimator.planetmodel
+package com.jaketimothy.estimator.planetmodel
 
 import math._
 import breeze.linalg._

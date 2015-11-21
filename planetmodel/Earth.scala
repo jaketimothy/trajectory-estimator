@@ -1,5 +1,5 @@
 // Earth.scala
-package estimator.planetmodel
+package com.jaketimothy.estimator.planetmodel
 
 abstract class WGS84Earth extends Planet {
 

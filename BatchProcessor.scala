@@ -1,5 +1,5 @@
 // BatchProcessor.scala
-package estimator
+package com.jaketimothy.estimator
 import org.apache.commons.math3.ode._
 import org.apache.commons.math3.ode.nonstiff.AdamsBashforthIntegrator
 import math.abs

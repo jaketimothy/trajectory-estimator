@@ -1,5 +1,5 @@
 // Integrator.scala
-package estimator
+package com.jaketimothy.estimator
 
 import breeze.linalg.DenseVector
 import org.apache.commons.math3.ode.{ExpandableStatefulODE, FirstOrderDifferentialEquations}

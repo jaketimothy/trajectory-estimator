@@ -1,10 +1,10 @@
 // TestDataGenerator.scala
-package estimator.test
+package com.jaketimothy.estimator.test
 
 import breeze.linalg.{DenseVector, DenseMatrix, norm}
-import estimator._
-import estimator.planetmodel._
-import estimator.math.cross
+import com.jaketimothy.estimator._
+import com.jaketimothy.estimator.planetmodel._
+import com.jaketimothy.estimator.math.cross
 import math.{sin, cos, Pi}
 import org.apache.commons.math3.ode.FirstOrderDifferentialEquations
 import java.nio.file.{Files, Paths}

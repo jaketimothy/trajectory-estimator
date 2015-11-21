@@ -1,10 +1,10 @@
 // Estimator.scala
-package estimator
+package com.jaketimothy.estimator
 
 import org.apache.spark._
 import org.apache.spark.SparkContext._
 import org.apache.spark.sql.SQLContext
-import estimator.planetmodel._
+import com.jaketimothy.estimator.planetmodel._
 import breeze.linalg._
 
 object Estimator extends App {

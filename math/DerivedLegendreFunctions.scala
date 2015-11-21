@@ -1,5 +1,5 @@
 // DerivedLegendreFunctions.scala
-package estimator.math
+package com.jaketimothy.estimator.math
 
 import math.sqrt
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction

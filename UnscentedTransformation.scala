@@ -1,5 +1,5 @@
 // UnscentedTransformation.scala
-package estimator
+package com.jaketimothy.estimator
 
 import breeze.linalg._
 import collection.immutable.{Vector => ScalaVector}

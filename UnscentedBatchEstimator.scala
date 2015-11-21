@@ -1,5 +1,5 @@
 // UnscentedBatchEstimator.scala
-package estimator
+package com.jaketimothy.estimator
 
 import breeze.linalg._
 import math.{abs, sqrt}

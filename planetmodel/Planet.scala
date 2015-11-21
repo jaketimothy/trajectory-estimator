@@ -1,5 +1,5 @@
 // Planet.scala
-package estimator.planetmodel
+package com.jaketimothy.estimator.planetmodel
 
 trait Planet {
 

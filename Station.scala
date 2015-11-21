@@ -1,5 +1,5 @@
 // Station.scala
-package estimator
+package com.jaketimothy.estimator
 
 import breeze.linalg._
 import math.{atan2, atan, Pi}
