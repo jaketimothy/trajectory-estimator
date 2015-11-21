@@ -3,13 +3,13 @@ package com.jaketimothy.estimator
 
 import breeze.linalg._
 import math.{abs, sqrt}
-import org.apache.spark.rdd.RDD
+// import org.apache.spark.rdd.RDD
 import org.apache.commons.math3.ode.{ExpandableStatefulODE, FirstOrderDifferentialEquations}
 import org.apache.commons.math3.ode.nonstiff.AdamsBashforthIntegrator
 
 class UnscentedBatchEstimator(
 	val dimension: Int,
-	def motionEquations: (DenseVector[Double], Double) => DenseVector[Double],
+	val motionEquations: FirstOrderDifferentialEquations,
 	val stations: Map[String, Station],
 	val alpha: Double,
 	val integrationMinStepSize: Double,
