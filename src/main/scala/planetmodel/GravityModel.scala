@@ -1,6 +1,7 @@
 // GravityModel.scala
 package com.jaketimothy.estimator.planetmodel
 
+import org.apache.spark.SparkContext
 import math._
 import breeze.linalg.{DenseVector, DenseMatrix, norm, *}
 import com.jaketimothy.estimator.math.DerivedLegendreFunctions
@@ -59,7 +60,7 @@ class EllipsoidalGravityModel(
 
 class SphericalHarmonicGravityModel(
 	val referenceEllipsoid: ReferenceEllipsoid,
-	val harmonicCoefficients: Vector[Vector[(Double, Double)]]
+	val harmonicCoefficients: RDD[((Int, Int), (Double, Double))]
 	) extends GravityModel {
 
 	def degree = harmonicCoefficients.length - 1
@@ -104,22 +105,21 @@ class SphericalHarmonicGravityModel(
 
 object SphericalHarmonicGravityModel {
 
-	def parseWgs84CoefficientsFile(file: String, degree: Int): Vector[Vector[(Double, Double)]] = {
-		val egmfile = io.Source.fromFile(file)
-		val coefficients = Array.fill(degree, degree + 1)((0.0, 0.0))
-		try {
-			var m = 0
-			egmfile.getLines.toStream.takeWhile(_ => m < degree).foreach(line => {
+	def parseWgs84CoefficientsFile(
+		sc: SparkContext,
+		file: String,
+		degree: Int
+		): RDD[((Int, Int), (Double, Double))] = {
+
+		// take: (3 to n + 1).sum == (n + 1) * (n + 2) / 2 - 3
+		sc.textfile(file).take((degree + 1) * (degree + 2) / 2 - 3)
+			.foreach(line => {
 				val lineparts = line.trim.split("""\s+""")
 				val n = lineparts(0).toInt
-				m = lineparts(1).toInt
+				val m = lineparts(1).toInt
 				val csvalues = lineparts.slice(2,6).map(_.toDouble)
-				coefficients(n)(m) = (csvalues(0), csvalues(1))
-				})
-		} finally {
-			egmfile.close
-		}
-		coefficients.map(_.toVector).toVector
+				((n, m), (csvalues(0), csvalues(1)))
+			})
 	}
 }
 
@@ -129,6 +129,7 @@ class PointMassGravityModel(
 	) extends GravityModel {
 
 	override def gravitationalAcceleration(position: DenseVector[Double]) = {
+		
 		gravitationalParameter * normalizedPointMasses.foldLeft(DenseVector(0.0, 0.0, 0.0))((g, pointMass) => {
 			val r = pointMass._1 - position
 			val rMag = norm(r)

@@ -1,4 +1,3 @@
-
 // build.sbt
 
 lazy val commonSettings = Seq(
@@ -13,7 +12,7 @@ lazy val root = (project in file(".")).
 		name := "trajectory-estimator",
 		libraryDependencies ++= Seq(
 			"org.apache.commons" % "commons-math3" % "3.5",
-			"org.scalanlp" % "breeze_2.10" % "0.11.2",
-			"org.json4s" % "json4s-jackson_2.10" % "3.3.0"
+            "org.apache.spark" % "spark-core_2.10" % "1.5.2",
+			"org.scalanlp" % "breeze_2.10" % "0.11.2"
 			)
 		)
