@@ -4,11 +4,20 @@ package com.jaketimothy.estimator.math
 import math.sqrt
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction
 
+/*
+ * Legendre functions underpin the spherical harmonic functions. This implementation
+ * uses the derived Legendre functions as described in [Jones 2010] Section 2.1.1.
+ *
+ *  References:
+ *   [Jones 2010] Efficient Models for the Evaluation and Estimation of the Gravity Field.
+ *     http://ccar.colorado.edu/geryon/papers/Misc/bajones_phd.pdf
+ */
+
 object DerivedLegendreFunctions {
 
 	private val cachedB = collection.mutable.Map[(Int, Int), Double]()
 
-	// Jones, equation 2.9
+	// [Jones 2010] Equation 2.9
 	def getB(n: Int, m: Int): Double = cachedB.getOrElseUpdate((n, m),
 		sqrt((2.0 * n + 1.0) * (2.0 * n - 1.0) / (n + m) / (n - m)))
 
@@ -17,7 +26,7 @@ object DerivedLegendreFunctions {
 		Vector(new PolynomialFunction(Array(0.0, sqrt(3))), new PolynomialFunction(Array(sqrt(3)))))
 
 	def normalizedSet(degree: Int): Vector[PolynomialFunction] = degree match {
-		// Jones, equation 2.11
+		// [Jones 2010] Equation 2.11
 
 		case n if (n == 0 || n == 1) => cachedA(n)
 		case n if (n >= 2) => {

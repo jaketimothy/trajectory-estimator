@@ -4,6 +4,12 @@ package com.jaketimothy.estimator
 import org.apache.commons.math3.ode.ExpandableStatefulODE
 import org.apache.commons.math3.ode.nonstiff.AdamsBashforthIntegrator
 
+/*
+ * This defines the project's ODE integrator.
+ *
+ * TODO: Potentially switch to breeze integrator when mature enough.
+ */
+
 object Integrator {
 
 	def step(

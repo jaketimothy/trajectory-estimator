@@ -4,8 +4,12 @@ package com.jaketimothy.estimator.planetmodel
 import math._
 import breeze.linalg._
 
+/*
+ * The reference ellipsoid defines a 3D geometric body.
+ * Distances are in meters, angles in radians.
+ */
+
 case class ReferenceEllipsoid(semimajorAxis: Double, flattening: Double) {
-	// distances in meters, angles in radians
 
 	val eccentricity = sqrt((2.0 - flattening) * flattening)
 	val linearEccentricity = semimajorAxis * eccentricity

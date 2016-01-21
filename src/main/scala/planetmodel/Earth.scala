@@ -1,6 +1,14 @@
 // Earth.scala
 package com.jaketimothy.estimator.planetmodel
 
+/*
+ * WGS84Earth takes its defining constants from [WGS84 2000].
+ *
+ * References:
+ *   [WGS84 2000] Department of Defense World Geodetic System 1984.
+ *     http://earth-info.nga.mil/GandG/publications/tr8350.2/wgs84fin.pdf
+ */
+
 abstract class WGS84Earth extends Planet {
 
     override val referenceEllipsoid = ReferenceEllipsoid(6378137.0, 1.0 / 298.257223563)

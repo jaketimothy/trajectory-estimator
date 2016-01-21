@@ -6,8 +6,21 @@ import math._
 import breeze.linalg.{DenseVector, DenseMatrix, norm, *}
 import com.jaketimothy.estimator.math.DerivedLegendreFunctions
 
+/*
+ * Gravity models must calculate the gravitational acceleration at a given position
+ * relative to the central body.  Coordinates are calculated in the ECEF frame.
+ * 
+ * References:
+ *   [WGS84 2000] Department of Defense World Geodetic System 1984.
+ *     http://earth-info.nga.mil/GandG/publications/tr8350.2/wgs84fin.pdf
+ *   [Jones 2010] Efficient Models for the Evaluation and Estimation of the Gravity Field.
+ *     http://ccar.colorado.edu/geryon/papers/Misc/bajones_phd.pdf
+ * 
+ * See also:
+ *   http://www.mathworks.com/help/aerotbx/ug/gravitysphericalharmonic.html
+ */
+ 
 trait GravityModel {
-	// coordinates are ECEF
 
 	def gravitationalAcceleration(position: DenseVector[Double]): DenseVector[Double]
 }
@@ -18,6 +31,9 @@ class PointGravityModel(val gravitationalParameter: Double) extends GravityModel
 		-gravitationalParameter / pow(norm(position), 3) * position
 }
 
+/*
+ * Implements the Ellipsoidal gravity model from [WGS84 2000] Chapter 4
+ */
 class EllipsoidalGravityModel(
 	referenceEllipsoid: ReferenceEllipsoid,
 	angularVelocity: Double,
@@ -31,7 +47,6 @@ class EllipsoidalGravityModel(
 	private val mu = gravitationalParameter
 
 	override def gravitationalAcceleration(position: DenseVector[Double]) = {
-		// implemented from WGS84 (Jan 2000), chapter 4
 
 		val p = sqrt(position(0) * position(0) + position(1) * position(1))
 		val u = sqrt(0.5 * (norm(position) * norm(position) - c * c) *
@@ -58,6 +73,9 @@ class EllipsoidalGravityModel(
 	}
 }
 
+/*
+ * Implements the Cartesian (Gottlieb) model from [Jones 2010] Section 2.1.4
+ */
 class SphericalHarmonicGravityModel(
 	val referenceEllipsoid: ReferenceEllipsoid,
 	val harmonicCoefficients: RDD[((Int, Int), (Double, Double))]
@@ -65,13 +83,12 @@ class SphericalHarmonicGravityModel(
 
 	def degree = harmonicCoefficients.length - 1
 
-	// Jones, equation 2.15
+	// [Jones 2010] Equation 2.15
 	private val getPi = Vector.tabulate(degree + 1, degree + 1)((n, m) => {
 		sqrt((n + m + 1.0) * (n - m) * (if (m == 0) 0.5 else 1.0))
 	})
 
 	override def gravitationalAcceleration(position: DenseVector[Double]) = {
-		// implemented from the Cartesian (Gottlieb) model [Jones, section 2.1.4]
 		
 		val r = norm(position)
 		val pq1 = (position(0) / r, position(1) / r)
