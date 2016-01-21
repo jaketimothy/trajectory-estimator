@@ -3,7 +3,7 @@
 lazy val commonSettings = Seq(
 	organization := "com.jaketimothy",
 	version := "0.1.0",
-	scalaVersion := "2.10.6"
+	scalaVersion := "2.10.5"
 	)
 
 lazy val root = (project in file(".")).
@@ -12,7 +12,8 @@ lazy val root = (project in file(".")).
 		name := "trajectory-estimator",
 		libraryDependencies ++= Seq(
 			"org.apache.commons" % "commons-math3" % "3.5",
-            "org.apache.spark" % "spark-core_2.10" % "1.5.2",
-			"org.scalanlp" % "breeze_2.10" % "0.11.2"
+            "org.apache.spark" % "spark-core_2.10" % "1.6.0",
+            "org.apache.spark" % "spark-sql_2.10" % "1.6.0",
+			"org.scalanlp" % "breeze_2.10" % "0.12"
 			)
 		)

@@ -2,6 +2,7 @@
 package com.jaketimothy.estimator.planetmodel
 
 import org.apache.spark.SparkContext
+import org.apache.spark.rdd.RDD
 import math._
 import breeze.linalg.{DenseVector, DenseMatrix, norm, *}
 import com.jaketimothy.estimator.math.DerivedLegendreFunctions
