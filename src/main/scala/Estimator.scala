@@ -12,7 +12,7 @@ import org.apache.spark.sql.SQLContext
 import com.jaketimothy.estimator.planetmodel._
 import breeze.linalg._
 
-object EstimatorApp {
+object Estimator {
 	def main(args: Array[String]) {
 		// input: observation stations, observations
 		// output: estimated trajectory
@@ -36,19 +36,14 @@ object EstimatorApp {
 		val outfilePath = args(2)
 
 		// initialize models
-		val earthHarmonicCoefficients = SphericalHarmonicGravityModel.parseWgs84CoefficientsFile("egmfile", 16) // TODO : how to specify egm file?
+		//val earthHarmonicCoefficients = SphericalHarmonicGravityModel.parseWgs84CoefficientsFile(sc, "egmfile", 16) // TODO : how to specify egm file?
 		
 		// ode
-		object MotionEquations extends FirstOrderDifferentialEquations {
+		val motionEquations = (y: DenseVector[Double], t: Double) => {
 
-			override val getDimension = 6
+			val earth = new EllipsoidalWGS84Earth() //new HarmonicWGS84Earth(earthHarmonicCoefficients);
 
-			val earth = new HarmonicWGS84Earth(earthHarmonicCoefficients);
-
-			override def computeDerivatives(t: Double, y: Array[Double], yDot: Array[Double]): Unit = {
-				val derivatives = y.slice(3, 6) ++ earth.gravityModel.gravitationalAcceleration(DenseVector(y.slice(0, 3))).toArray
-				derivatives.copyToArray(yDot)
-			}
+			DenseVector.vertcat(y(3 to 6), earth.gravityModel.gravitationalAcceleration(y(0 to 2)))
 		}
 
 		// process

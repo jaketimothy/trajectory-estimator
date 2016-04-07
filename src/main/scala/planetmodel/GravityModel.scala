@@ -79,10 +79,12 @@ class EllipsoidalGravityModel(
  */
 class SphericalHarmonicGravityModel(
 	val referenceEllipsoid: ReferenceEllipsoid,
-	val harmonicCoefficients: RDD[((Int, Int), (Double, Double))]
+	val harmonicCoefficients: RDD[(Int, Vector[(Double, Double)])]
 	) extends GravityModel {
 
-	def degree = harmonicCoefficients.length - 1
+	def degree = harmonicCoefficients.count().toInt + 1
+
+	private val sc = harmonicCoefficients.context
 
 	// [Jones 2010] Equation 2.15
 	private val getPi = Vector.tabulate(degree + 1, degree + 1)((n, m) => {
@@ -96,25 +98,34 @@ class SphericalHarmonicGravityModel(
 		val pq = (1.0, 0.0) +: (1 to degree).scanLeft(pq1)((pqPrev, i) => 
 			(pq1._1 * pqPrev._1 - pq1._2 * pqPrev._1, pq1._2 * pqPrev._2 + pq1._1 * pqPrev._2))
 		
-		val d = harmonicCoefficients.map(_.zip(pq).map{case(csnm, pqm) => csnm._1 * pqm._1 + csnm._2 * pqm._2})
-		val e = harmonicCoefficients.map(0.0 +: _.tail.zip(pq.dropRight(1)).map{case(csnm, pqm) => csnm._1 * pqm._1 + csnm._2 * pqm._2})
-		val f = harmonicCoefficients.map(csn => csn.zip(pq).map{case(csnm, pqm) => csnm._2 * pqm._1 - csnm._1 * pqm._2})
+		//val d = harmonicCoefficients mapValues (cs => cs map {case (m, c, s) => (m, c * pq(m)._1 + s * pq(m)._2)}))
+		//val e = harmonicCoefficients mapValues (cs => 0.0 +: cs map {case (m, c, s) => (m, c * pq(m)._1 + s * pq(m)._2)}))
+		//val f = harmonicCoefficients mapValues (cs => cs map {case (m, c, s) => (m, c * pq(m)._1 + s * pq(m)._2)}))
+		val d = harmonicCoefficients mapValues (cs => for (i <- 0 to cs.length) yield cs(i)._1 * pq(i)._1 + cs(i)._2 * pq(i)._2)
+		val e = harmonicCoefficients mapValues (cs => 0.0 +: (for (i <- 1 to cs.length) yield cs(i)._1 * pq(i - 1)._1 + cs(i)._2 * pq(i - 1)._2))
+		val f = harmonicCoefficients mapValues (cs => for (i <- 0 to cs.length) yield cs(i)._2 * pq(i)._1 - cs(i)._1 * pq(i)._2)
 
 		def a(degree: Int, order: Int, x: Double) = DerivedLegendreFunctions.normalizedValue(degree, order, x)
-		val rTerm = (0 to degree).map(pow(referenceEllipsoid.semimajorAxis / r, _))
+		val rTerm = for (i <- 0 to degree) yield pow(referenceEllipsoid.semimajorAxis / r, i)
 		val zOverR = position(2) / r
-		val a1 = (2 to degree).foldLeft(0.0)((sum, n) =>
-			sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
-				innerSum + m * a(n, m, zOverR) * e(n)(m)))
-		val a2 = (2 to degree).foldLeft(0.0)((sum, n) =>
-			sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
-				innerSum + m * a(n, m, zOverR) * f(n)(m)))
-		val a3 = (2 to degree).foldLeft(0.0)((sum, n) =>
-			sum + rTerm(n) * (0 to n - 1).foldLeft(0.0)((innerSum, m) =>
-				innerSum + m * a(n, m + 1, zOverR) * d(n)(m) * getPi(n)(m + 1) / getPi(n)(m)))
-		val a4 = (2 to degree).foldLeft(0.0)((sum, n) =>
-			sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
-				innerSum + (n + m + 1.0) * a(n, m, zOverR) * d(n)(m)))
+		//val a1 = for (i <- 2 to degree; j <- 1 to i) yield
+		//val rTerm.drop(2).map{case (n, rho) => }
+		val a1 = e.map{case (n, x) => rTerm(n) * (for (m <- 1 to n) yield m * a(n, m, zOverR) * x(m)).sum}.sum
+		val a2 = f.map{case (n, x) => rTerm(n) * (for (m <- 1 to n) yield m * a(n, m, zOverR) * x(m)).sum}.sum
+		val a3 = d.map{case (n, x) => rTerm(n) * (for (m <- 0 to n - 1) yield m * a(n, m, zOverR) * x(m) * getPi(n)(m + 1) / getPi(n)(m)).sum}.sum
+		val a4 = d.map{case (n, x) => rTerm(n) * (for (m <- 1 to n) yield (n + m + 1.0) * a(n, m, zOverR) * x(m)).sum}.sum
+		// val a1 = (2 to degree).foldLeft(0.0)((sum, n) =>
+		// 	sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
+		// 		innerSum + m * a(n, m, zOverR) * e(n)(m)))
+		// val a2 = (2 to degree).foldLeft(0.0)((sum, n) =>
+		// 	sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
+		// 		innerSum + m * a(n, m, zOverR) * f(n)(m)))
+		// val a3 = (2 to degree).foldLeft(0.0)((sum, n) =>
+		// 	sum + rTerm(n) * (0 to n - 1).foldLeft(0.0)((innerSum, m) =>
+		// 		innerSum + m * a(n, m + 1, zOverR) * d(n)(m) * getPi(n)(m + 1) / getPi(n)(m)))
+		// val a4 = (2 to degree).foldLeft(0.0)((sum, n) =>
+		// 	sum + rTerm(n) * (1 to n).foldLeft(0.0)((innerSum, m) =>
+		// 		innerSum + (n + m + 1.0) * a(n, m, zOverR) * d(n)(m)))
 
 		referenceEllipsoid.semimajorAxis / r / r * (-position / r + (
 			(DenseVector(a1, a2, a3)) - (position(2) * a3 / r + a4) * position / r))
@@ -127,17 +138,21 @@ object SphericalHarmonicGravityModel {
 		sc: SparkContext,
 		file: String,
 		degree: Int
-		): RDD[((Int, Int), (Double, Double))] = {
+		): RDD[(Int, Vector[(Double, Double)])] = {
 
 		// take: (3 to n + 1).sum == (n + 1) * (n + 2) / 2 - 3
-		sc.textfile(file).take((degree + 1) * (degree + 2) / 2 - 3)
-			.foreach(line => {
+		sc.parallelize(
+			sc.textFile(file).take((degree + 1) * (degree + 2) / 2 - 3)
+			.map(line => {
 				val lineparts = line.trim.split("""\s+""")
 				val n = lineparts(0).toInt
 				val m = lineparts(1).toInt
 				val csvalues = lineparts.slice(2,6).map(_.toDouble)
-				((n, m), (csvalues(0), csvalues(1)))
+				(n, (m, csvalues(0), csvalues(1)))
 			})
+			.groupBy(_._1)
+			.mapValues(x => x.toVector.map(_._2).sortBy(_._1).map((_._2, _._3))))
+			//.sortByKey()
 	}
 }
 

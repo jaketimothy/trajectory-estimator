@@ -1,6 +1,8 @@
 // Earth.scala
 package com.jaketimothy.estimator.planetmodel
 
+import org.apache.spark.rdd.RDD
+
 /*
  * WGS84Earth takes its defining constants from [WGS84 2000].
  *
@@ -28,7 +30,7 @@ class EllipsoidalWGS84Earth extends WGS84Earth {
 }
 
 class HarmonicWGS84Earth(
-	harmonicCoefficients: Vector[Vector[(Double, Double)]]
+	harmonicCoefficients: RDD[(Int, Vector[(Double, Double)])]
 	) extends WGS84Earth {
 
 	override val gravityModel = new SphericalHarmonicGravityModel(
