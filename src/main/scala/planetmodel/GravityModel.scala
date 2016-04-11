@@ -3,8 +3,8 @@ package com.jaketimothy.estimator.planetmodel
 
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import math._
 import breeze.linalg.{DenseVector, DenseMatrix, norm, *}
+import breeze.numerics._
 import com.jaketimothy.estimator.math.DerivedLegendreFunctions
 
 /*
@@ -49,6 +49,8 @@ class EllipsoidalGravityModel(
 
 	override def gravitationalAcceleration(position: DenseVector[Double]) = {
 
+		assume(norm(position) > a)
+
 		val p = sqrt(position(0) * position(0) + position(1) * position(1))
 		val u = sqrt(0.5 * (norm(position) * norm(position) - c * c) *
 			(1.0 + sqrt(1.0 + 4.0 * c * c * position(2) * position(2) / pow(norm(position) * norm(position) - c * c, 2))))
@@ -57,7 +59,7 @@ class EllipsoidalGravityModel(
 		val q = 0.5 * ((1.0 + 3.0 * u * u / (c * c)) * atan(c / u) - 3.0 * u / c)
 		val q0 = 0.5 * ((1.0 + 3.0 * b * b / (c * c)) * atan(c / b) - 3.0 * b / c)
 		val qPrime = 3.0 * (1.0 + u * u / (c * c)) * (1.0 - u / c * atan(c / u)) - 1.0
-
+		
 		val gammaU = (-(gravitationalParameter + omega * omega * a * a * c * qPrime / q0 * (0.5 * pow(sin(beta), 2) - 1.0 / 6.0)) 
 			/ (u * u + c * c) + omega * omega * u * pow(cos(beta), 2)) / w
 		val gammaBeta = (a * a / sqrt(u * u + c * c) * q / q0 - sqrt(u * u + c * c)) *
@@ -65,10 +67,18 @@ class EllipsoidalGravityModel(
 		val gammaEllipsoidal = DenseVector(gammaU, gammaBeta, 0.0)
 
 		val r = u / (w * sqrt(u * u + c * c))
-		val ellipsoidalToCartesian = new DenseMatrix(3, 3, Array(
+		val ellipsoidalToCartesian = if (p == 0.0) {
+			// if position is above z-pole, p == 0.0
+			new DenseMatrix(3, 3, Array(
+			0.0, 0.0, sin(beta) / w,
+			0.0, 0.0, r * cos(beta),
+			0.0, 0.0, 0.0))
+		} else {
+			new DenseMatrix(3, 3, Array(
 			r * cos(beta) * position(0) / p, r * cos(beta) * position(1) / p, sin(beta) / w,
 			-sin(beta) * position(0) / p / w, -sin(beta) * position(1) / p / w, r * cos(beta),
 			-position(1) / p, position(0) / p, 0.0))
+		}
 
 		ellipsoidalToCartesian * gammaEllipsoidal
 	}
@@ -141,18 +151,20 @@ object SphericalHarmonicGravityModel {
 		): RDD[(Int, Vector[(Double, Double)])] = {
 
 		// take: (3 to n + 1).sum == (n + 1) * (n + 2) / 2 - 3
-		sc.parallelize(
-			sc.textFile(file).take((degree + 1) * (degree + 2) / 2 - 3)
+		val parsedLines = sc.textFile(file).take((degree + 1) * (degree + 2) / 2 - 3)
 			.map(line => {
 				val lineparts = line.trim.split("""\s+""")
 				val n = lineparts(0).toInt
 				val m = lineparts(1).toInt
 				val csvalues = lineparts.slice(2,6).map(_.toDouble)
 				(n, (m, csvalues(0), csvalues(1)))
-			})
-			.groupBy(_._1)
-			.mapValues(x => x.toVector.map(_._2).sortBy(_._1).map((_._2, _._3))))
-			//.sortByKey()
+			  })
+
+		sc.parallelize(
+			parsedLines.groupBy(_._1)
+			  .mapValues(x => x.map(_._2).sortBy(_._1).map(y => (y._2, y._3)).toVector)
+			  .toSeq)
+			  //.sortByKey()
 	}
 }
 

@@ -1,12 +1,14 @@
 // TestDataGenerator.scala
-package com.jaketimothy.estimator.test
+package com.jaketimothy.estimator
 
 import breeze.linalg.{DenseVector, DenseMatrix, norm}
-import com.jaketimothy.estimator._
+import breeze.numerics._
+import breeze.numerics.constants.Pi
 import com.jaketimothy.estimator.planetmodel._
 import com.jaketimothy.estimator.math.cross
-import math.{sin, cos, Pi}
+// import scala.math.{sin, cos, Pi}
 import org.apache.commons.math3.ode.FirstOrderDifferentialEquations
+import org.apache.commons.math3.ode.nonstiff.GraggBulirschStoerIntegrator
 import java.nio.file.{Files, Paths}
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
@@ -60,7 +62,7 @@ object CircularOrbitDataGenerator {
 		): Vector[Vector[Double]] = {
 
 		// velocity magnitude
-		val v = math.sqrt(MotionEquations.earth.gravitationalParameter / norm(initalPosition))
+		val v = sqrt(MotionEquations.earth.gravitationalParameter / norm(initalPosition))
 
 		// ascending node direction
 		val a = DenseVector(cos(ascendingNode), sin(ascendingNode), 0.0)
@@ -72,7 +74,12 @@ object CircularOrbitDataGenerator {
 		val initialState = DenseVector(initalPosition.toArray ++ velocity.toArray)
 
 		val stateData = initialState +: (timeStep to duration by timeStep).scanLeft(initialState)(
-			(y, t) => Integrator.step(y, MotionEquations, timeStep))
+			(y, t) => {
+				val integrator = new GraggBulirschStoerIntegrator(0.0, timeStep, 1.49012e-8, 1.49012e-8)
+				val tempY = Array.fill(y.length)(0.0)
+				integrator.integrate(MotionEquations, t - timeStep, y.toArray, t, tempY)
+				DenseVector(tempY)
+				})
 
 		val noisyStateData = stateData.map(y => DenseVector(
 			y(0 to 2).toArray.map(x => x + util.Random.nextGaussian() * positionNoiseDeviation) ++ y(3 to 5).toArray))

@@ -1,16 +1,18 @@
 // InputTest.scala
+package com.jaketimothy.estimator
 
 import org.scalatest._
 
 import java.nio.file.{Files, Paths}
+import scala.io.Source
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization
 import org.json4s.jackson.Serialization.{read, writePretty}
-import com.jaketimothy.estimator._
-import org.apache.spark._
-import org.apache.spark.SparkContext._
-//import breeze.linalg._
+// import org.apache.spark._
+// import org.apache.spark.SparkContext._
+import breeze.linalg._
+import breeze.numerics._
 
 // class SparkSpec extends FlatSpec with BeforeAndAfter {
 
@@ -38,7 +40,7 @@ object InputTest extends App {
 
 	implicit val formats = Serialization.formats(NoTypeHints)
 
-	val stationSource = io.Source.fromFile(args(0))
+	val stationSource = Source.fromFile(args(0))
 	//val observationData = sqlContext.read.json(args(1))
 	//val outfilePath = args(2)
 
